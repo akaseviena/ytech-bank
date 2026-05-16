@@ -119,7 +119,7 @@ export default function AIAssistantPage() {
               >
                 {msg.role === "assistant" && (
                   <div className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end" style={{ background: "#FFFFFF", border: "2px solid rgba(245,166,35,0.5)", boxShadow: "0 0 8px rgba(245,166,35,0.3)" }}>
-                    <img src="/logo.png" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
+                    <img src="/logo.PNG" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
                   </div>
                 )}
                 <div
@@ -139,7 +139,7 @@ export default function AIAssistantPage() {
           {loading && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
               <div className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end" style={{ background: "#FFFFFF", border: "2px solid rgba(245,166,35,0.5)", boxShadow: "0 0 8px rgba(245,166,35,0.3)" }}>
-                <img src="/logo.png" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
+                <img src="/logo.PNG" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
               </div>
               <GlassCard className="rounded-bl-md">
                 <TypingIndicator />

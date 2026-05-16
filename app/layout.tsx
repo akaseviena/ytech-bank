@@ -5,7 +5,7 @@ import SplashScreen from "@/components/ui/SplashScreen";
 export const metadata: Metadata = {
   title: "Y-tech Bank — Banking for the next generation",
   description: "Premium digital banking powered by AI",
-  icons: { icon: "/logo.png" },
+  icons: { icon: "/logo.PNG" },
 };
 
 export default function RootLayout({

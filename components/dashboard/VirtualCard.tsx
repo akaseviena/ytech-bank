@@ -75,7 +75,7 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
 
         <div className="relative z-[1]">
           <div className="flex justify-between items-start mb-6">
-            <img src="/logo.png" alt="" width={28} height={28} style={{ objectFit: "contain", opacity: 0.7 }} />
+            <img src="/logo.PNG" alt="" width={28} height={28} style={{ objectFit: "contain", opacity: 0.7 }} />
             <span className="text-[10px] font-bold text-[#9B9B9B] tracking-widest uppercase">Virtual Debit</span>
           </div>
 

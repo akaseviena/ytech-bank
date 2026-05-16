@@ -41,7 +41,7 @@ export default function SplashScreen() {
             }}
           >
             <img
-              src="/logo.png"
+              src="/logo.PNG"
               alt="Y-tech Bank"
               width={80}
               height={80}

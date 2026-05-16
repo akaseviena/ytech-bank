@@ -55,7 +55,7 @@ export default function Sidebar({ profile, notifications }: SidebarProps) {
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ border: "1.5px solid rgba(245,166,35,0.5)", background: "#FFFFFF" }}
           >
-            <img src="/logo.png" alt="Y-tech Bank" width={24} height={24} style={{ objectFit: "contain" }} />
+            <img src="/logo.PNG" alt="Y-tech Bank" width={24} height={24} style={{ objectFit: "contain" }} />
           </div>
           <span className="font-bold text-sm gold-text">Y-tech Bank</span>
         </Link>
