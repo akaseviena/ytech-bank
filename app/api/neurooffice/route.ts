@@ -62,12 +62,13 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { agentType, input, tab, additionalInput, tone } = await request.json() as {
+  const { agentType, input, tab, additionalInput, tone, conversationHistory } = await request.json() as {
     agentType: AgentType;
     input: string;
     tab?: string;
     additionalInput?: string;
     tone?: string;
+    conversationHistory?: { role: "user" | "assistant"; content: string }[];
   };
 
   // Plan access check
@@ -135,11 +136,16 @@ ${breakdown || "No spending data"}
 Transaction count: ${rows.length} (${sent.length} sent, ${received.length} received)`;
   }
 
+  const history = (conversationHistory ?? []).map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 2000,
     system: SYSTEM_PROMPTS[agentType],
-    messages: [{ role: "user", content: userMessage }],
+    messages: [...history, { role: "user", content: userMessage }],
   });
 
   const result = response.content[0].type === "text" ? response.content[0].text : "";

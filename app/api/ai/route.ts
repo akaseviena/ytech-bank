@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { message, history } = await request.json() as {
+  const { message, conversationHistory } = await request.json() as {
     message: string;
-    history: { role: "user" | "assistant"; content: string }[];
+    conversationHistory: { role: "user" | "assistant"; content: string }[];
   };
 
   // Fetch user data
@@ -78,38 +78,18 @@ Savings goals: ${goalsStr}
 Keep responses concise (max 3 short paragraphs). Be encouraging and actionable.
 Never advise on external investments. Only discuss Y-tech Bank services and the user's data.`;
 
-  const messages: Anthropic.Messages.MessageParam[] = [
-    ...history.map((h) => ({ role: h.role, content: h.content })),
-    { role: "user", content: message },
-  ];
+  const history: Anthropic.Messages.MessageParam[] = (conversationHistory ?? []).map((h) => ({
+    role: h.role,
+    content: h.content,
+  }));
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1000,
     system: systemPrompt,
-    messages,
+    messages: [...history, { role: "user", content: message }],
   });
 
   const reply = response.content[0].type === "text" ? response.content[0].text : "";
-
-  // Save conversation
-  const { data: existing } = await supabase
-    .from("ai_conversations")
-    .select("id, messages")
-    .eq("user_id", user.id)
-    .single();
-
-  const updatedMessages = [
-    ...((existing?.messages as { role: string; content: string; timestamp: string }[]) ?? []),
-    { role: "user", content: message, timestamp: new Date().toISOString() },
-    { role: "assistant", content: reply, timestamp: new Date().toISOString() },
-  ].slice(-50);
-
-  if (existing) {
-    await supabase.from("ai_conversations").update({ messages: updatedMessages, updated_at: new Date().toISOString() }).eq("id", existing.id);
-  } else {
-    await supabase.from("ai_conversations").insert({ user_id: user.id, messages: updatedMessages });
-  }
-
   return NextResponse.json({ reply });
 }

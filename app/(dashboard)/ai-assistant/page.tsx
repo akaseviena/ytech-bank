@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Plus, X } from "lucide-react";
 import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
+import GoldButton from "@/components/ui/GoldButton";
 
 interface Message {
   role: "user" | "assistant";
@@ -39,6 +40,7 @@ export default function AIAssistantPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -49,27 +51,35 @@ export default function AIAssistantPage() {
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
     const userMsg: Message = { role: "user", content: text, timestamp: new Date().toISOString() };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    const conversationHistory = messages.map((m) => ({ role: m.role, content: m.content }));
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }));
-    const res = await fetch("/api/ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, history }),
-    });
-
-    const data = await res.json() as { reply?: string; error?: string };
-    setLoading(false);
-
-    if (data.reply) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.reply!, timestamp: new Date().toISOString() },
-      ]);
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, conversationHistory }),
+      });
+      const data = await res.json() as { reply?: string; error?: string };
+      if (data.reply) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.reply!, timestamp: new Date().toISOString() },
+        ]);
+      }
+    } catch {
+      // silently ignore network errors
+    } finally {
+      setLoading(false);
     }
+  }
+
+  function handleClear() {
+    setMessages([]);
+    setInput("");
+    setShowClearConfirm(false);
   }
 
   return (
@@ -77,13 +87,27 @@ export default function AIAssistantPage() {
       <div className="flex flex-col h-[calc(100vh-0px)] lg:h-screen">
         {/* Header */}
         <div className="px-6 py-4 flex items-center gap-3" style={{ background: "#FFFFFF", borderBottom: "1px solid #F0F0F0" }}>
-          <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)]">
+          <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] flex-shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="font-bold text-lg text-[#1A1A1A]">AI Assistant</h1>
             <p className="text-xs text-[#6B6B6B]">Powered by Claude · Your personal finance advisor</p>
           </div>
+          <AnimatePresence>
+            {messages.length > 0 && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={() => setShowClearConfirm(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5A623] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,166,35,0.3)] hover:bg-[rgba(245,166,35,0.04)] flex-shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                New
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Messages */}
@@ -188,6 +212,69 @@ export default function AIAssistantPage() {
           </div>
         </div>
       </div>
+
+      {/* ── New conversation confirmation modal ── */}
+      <AnimatePresence>
+        {showClearConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(180,180,200,0.2)", backdropFilter: "blur(12px) saturate(150%)", WebkitBackdropFilter: "blur(12px) saturate(150%)" }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.88, y: 24, filter: "blur(8px)" }}
+              animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, scale: 0.94, y: 12, filter: "blur(4px)" }}
+              transition={{ duration: 0.28, ease: [0.175, 0.885, 0.32, 1.275] }}
+              className="w-full max-w-sm p-6"
+              style={{
+                background: "rgba(255,255,255,0.9)",
+                backdropFilter: "blur(60px) saturate(200%)",
+                WebkitBackdropFilter: "blur(60px) saturate(200%)",
+                border: "1px solid rgba(255,255,255,0.95)",
+                borderTop: "1.5px solid rgba(255,255,255,1)",
+                boxShadow: "0 32px 64px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,1)",
+                borderRadius: 28,
+              }}
+            >
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="absolute top-4 right-4 text-[#9B9B9B] hover:text-[#1A1A1A] transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="text-center mb-5">
+                <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl" style={{ background: "rgba(245,166,35,0.1)" }}>
+                  ✨
+                </div>
+                <h4 className="font-bold text-lg text-[#1A1A1A] mb-1">Start new conversation?</h4>
+                <p className="text-sm text-[#6B6B6B]">Current conversation will be cleared.</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowClearConfirm(false)}
+                  className="flex-1 py-2.5 text-sm font-semibold rounded-2xl transition-all"
+                  style={{
+                    background: "rgba(120,120,130,0.12)",
+                    border: "1px solid rgba(255,255,255,0.6)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.8)",
+                    color: "#1A1A1A",
+                  }}
+                >
+                  Cancel
+                </button>
+                <GoldButton className="flex-1" onClick={handleClear}>
+                  Clear & Start
+                </GoldButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageTransition>
   );
 }
