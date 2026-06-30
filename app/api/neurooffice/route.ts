@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan, type TransactionCategory, CATEGORY_INFO } from "@/types";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
-import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan, type TransactionCategory, CATEGORY_INFO } from "@/types";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -61,72 +61,115 @@ For financial reports: analyze the provided transaction data and create a profes
 };
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  console.log("[neurooffice] Request received");
+  console.log("[neurooffice] API key exists:", !!process.env.ANTHROPIC_API_KEY);
 
-  const { agentType, input, tab, additionalInput, tone, conversationHistory } = await request.json() as {
-    agentType: AgentType;
-    input: string;
-    tab?: string;
-    additionalInput?: string;
-    tone?: string;
-    conversationHistory?: { role: "user" | "assistant"; content: string }[];
-  };
+  try {
+    // 1. Auth
+    console.log("[neurooffice] Initializing Supabase client...");
+    const supabase = await createClient();
 
-  // Plan access check
-  const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).single();
-  const plan = (profile?.plan ?? "basic") as Plan;
+    console.log("[neurooffice] Getting user...");
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError) console.error("[neurooffice] Auth error:", authError);
+    if (!user) {
+      console.log("[neurooffice] No user — returning 401");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    console.log("[neurooffice] User authenticated:", user.id);
 
-  if (!NEUROOFFICE_PLANS.includes(plan)) {
-    return NextResponse.json({ error: "NeuroOffice is not available on your plan." }, { status: 403 });
-  }
+    // 2. Parse body
+    let body: {
+      agentType: AgentType;
+      input: string;
+      tab?: string;
+      additionalInput?: string;
+      tone?: string;
+      conversationHistory?: { role: "user" | "assistant"; content: string }[];
+    };
+    try {
+      body = await request.json();
+    } catch (parseErr) {
+      console.error("[neurooffice] Failed to parse request body:", parseErr);
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
 
-  const allowedAgents = AGENT_PLAN_ACCESS[plan] ?? [];
-  if (!allowedAgents.includes(agentType)) {
-    return NextResponse.json({ error: "This agent is not available on your plan." }, { status: 403 });
-  }
+    const { agentType, input, tab, additionalInput, tone, conversationHistory } = body;
+    console.log("[neurooffice] agentType:", agentType, "tab:", tab, "historyLen:", conversationHistory?.length ?? 0);
 
-  // Build user message
-  let userMessage = input;
+    if (!agentType || !input) {
+      return NextResponse.json({ error: "Missing agentType or input" }, { status: 400 });
+    }
 
-  if (agentType === "copywriter" && additionalInput) {
-    userMessage = `Original text to improve:\n${additionalInput}\n\nImprovement request: ${input}`;
-  }
-  if (agentType === "client-manager" && tab === "respond-to-review" && tone) {
-    userMessage = `Customer review:\n${input}\n\nTone requested: ${tone}`;
-  }
-  if (tab) {
-    userMessage = `Task type: ${tab}\n\n${userMessage}`;
-  }
+    // 3. Plan access check
+    console.log("[neurooffice] Fetching profile for plan check...");
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", user.id)
+      .single();
 
-  // Accountant financial report — inject real transaction data
-  if (agentType === "accountant" && tab === "financial-report") {
-    const { data: txs } = await supabase
-      .from("transactions")
-      .select("amount, sender_id, category, description, created_at")
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    if (profileError) console.error("[neurooffice] Profile fetch error:", profileError);
+    const plan = (profile?.plan ?? "basic") as Plan;
+    console.log("[neurooffice] User plan:", plan);
 
-    const { data: prof } = await supabase.from("profiles").select("balance, first_name, last_name").eq("id", user.id).single();
-    const rows = txs ?? [];
-    const sent = rows.filter((t) => t.sender_id === user.id);
-    const received = rows.filter((t) => t.sender_id !== user.id);
-    const totalSent = sent.reduce((s, t) => s + Number(t.amount), 0);
-    const totalReceived = received.reduce((s, t) => s + Number(t.amount), 0);
+    if (!NEUROOFFICE_PLANS.includes(plan)) {
+      console.log("[neurooffice] Plan not eligible for NeuroOffice:", plan);
+      return NextResponse.json({ error: "NeuroOffice is not available on your plan." }, { status: 403 });
+    }
 
-    const catBreakdown: Partial<Record<TransactionCategory, number>> = {};
-    sent.forEach((t) => {
-      const c = t.category as TransactionCategory;
-      catBreakdown[c] = (catBreakdown[c] ?? 0) + Number(t.amount);
-    });
-    const breakdown = Object.entries(catBreakdown)
-      .sort((a, b) => b[1] - a[1])
-      .map(([cat, amt]) => `${CATEGORY_INFO[cat as TransactionCategory]?.emoji} ${cat}: €${Number(amt).toFixed(2)}`)
-      .join("\n");
+    const allowedAgents = AGENT_PLAN_ACCESS[plan] ?? [];
+    if (!allowedAgents.includes(agentType)) {
+      console.log("[neurooffice] Agent not allowed on plan:", agentType, plan);
+      return NextResponse.json({ error: "This agent is not available on your plan." }, { status: 403 });
+    }
 
-    userMessage = `Generate a professional financial report for:
+    // 4. Build user message
+    let userMessage = input;
+
+    if (agentType === "copywriter" && additionalInput) {
+      userMessage = `Original text to improve:\n${additionalInput}\n\nImprovement request: ${input}`;
+    }
+    if (agentType === "client-manager" && tab === "respond-to-review" && tone) {
+      userMessage = `Customer review:\n${input}\n\nTone requested: ${tone}`;
+    }
+    if (tab) {
+      userMessage = `Task type: ${tab}\n\n${userMessage}`;
+    }
+
+    // 5. Accountant financial report — inject real transaction data
+    if (agentType === "accountant" && tab === "financial-report") {
+      console.log("[neurooffice] Fetching transaction data for accountant...");
+      const { data: txs } = await supabase
+        .from("transactions")
+        .select("amount, sender_id, category, description, created_at")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("balance, first_name, last_name")
+        .eq("id", user.id)
+        .single();
+
+      const rows = txs ?? [];
+      const sent = rows.filter((t) => t.sender_id === user.id);
+      const received = rows.filter((t) => t.sender_id !== user.id);
+      const totalSent = sent.reduce((s, t) => s + Number(t.amount), 0);
+      const totalReceived = received.reduce((s, t) => s + Number(t.amount), 0);
+
+      const catBreakdown: Partial<Record<TransactionCategory, number>> = {};
+      sent.forEach((t) => {
+        const c = t.category as TransactionCategory;
+        catBreakdown[c] = (catBreakdown[c] ?? 0) + Number(t.amount);
+      });
+      const breakdown = Object.entries(catBreakdown)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cat, amt]) => `${CATEGORY_INFO[cat as TransactionCategory]?.emoji} ${cat}: €${Number(amt).toFixed(2)}`)
+        .join("\n");
+
+      userMessage = `Generate a professional financial report for:
 Name: ${prof?.first_name} ${prof?.last_name}
 Current Balance: €${Number(prof?.balance ?? 0).toFixed(2)}
 Total Spent (last 50 transactions): €${totalSent.toFixed(2)}
@@ -137,20 +180,40 @@ Spending by category:
 ${breakdown || "No spending data"}
 
 Transaction count: ${rows.length} (${sent.length} sent, ${received.length} received)`;
+    }
+
+    // 6. Call Anthropic
+    const history = (conversationHistory ?? []).map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+
+    console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-20250514, history:", history.length);
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: SYSTEM_PROMPTS[agentType],
+      messages: [...history, { role: "user", content: userMessage }],
+    });
+
+    console.log("[neurooffice] Anthropic response received, stop_reason:", response.stop_reason);
+
+    const result = response.content[0]?.type === "text" ? response.content[0].text : "";
+    return NextResponse.json({ result });
+
+  } catch (error: unknown) {
+    const err = error as Error & { status?: number; error?: { message?: string } };
+    console.error("[neurooffice] UNHANDLED ERROR:", err);
+    console.error("[neurooffice] Error name:", err?.name);
+    console.error("[neurooffice] Error message:", err?.message);
+    console.error("[neurooffice] Error stack:", err?.stack);
+    if (err?.status) console.error("[neurooffice] HTTP status from upstream:", err.status);
+    if (err?.error) console.error("[neurooffice] Upstream error body:", err.error);
+
+    return NextResponse.json(
+      { error: err?.message ?? "Unknown error", name: err?.name ?? "Error" },
+      { status: 500 }
+    );
   }
-
-  const history = (conversationHistory ?? []).map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
-
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1000,
-    system: SYSTEM_PROMPTS[agentType],
-    messages: [...history, { role: "user", content: userMessage }],
-  });
-
-  const result = response.content[0].type === "text" ? response.content[0].text : "";
-  return NextResponse.json({ result });
 }
