@@ -188,10 +188,10 @@ Transaction count: ${rows.length} (${sent.length} sent, ${received.length} recei
       content: m.content,
     }));
 
-    console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-20250514, history:", history.length);
+    console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-5-20250929, history:", history.length);
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-5-20250929",
       max_tokens: 1000,
       system: SYSTEM_PROMPTS[agentType],
       messages: [...history, { role: "user", content: userMessage }],
