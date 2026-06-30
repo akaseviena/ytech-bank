@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan, type TransactionCategory, CATEGORY_INFO } from "@/types";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
@@ -143,7 +146,7 @@ Transaction count: ${rows.length} (${sent.length} sent, ${received.length} recei
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 2000,
+    max_tokens: 1000,
     system: SYSTEM_PROMPTS[agentType],
     messages: [...history, { role: "user", content: userMessage }],
   });

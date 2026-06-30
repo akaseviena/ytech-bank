@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 import { subMonths } from "date-fns";
 import { CATEGORY_INFO, type TransactionCategory } from "@/types";
 
