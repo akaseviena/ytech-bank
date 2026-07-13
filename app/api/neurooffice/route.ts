@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan, type TransactionCategory, CATEGORY_INFO } from "@/types";
+import { subMonths, startOfMonth } from "date-fns";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -137,63 +138,104 @@ export async function POST(request: NextRequest) {
       userMessage = `Task type: ${tab}\n\n${userMessage}`;
     }
 
-    // 5. Accountant financial report — inject real transaction data
-    if (agentType === "accountant" && tab === "financial-report") {
-      console.log("[neurooffice] Fetching transaction data for accountant...");
-      const { data: txs } = await supabase
+    // 5. Fetch financial context for all agents
+    console.log("[neurooffice] Fetching financial context...");
+    const monthStart = startOfMonth(new Date()).toISOString();
+    const monthAgo = subMonths(new Date(), 1).toISOString();
+
+    const [profileRes, txRes, goalsRes, monthTxRes] = await Promise.all([
+      supabase.from("profiles").select("balance, first_name, last_name, plan").eq("id", user.id).single(),
+      supabase
         .from("transactions")
-        .select("amount, sender_id, category, description, created_at")
+        .select("amount, sender_id, category, description, created_at, type")
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(30),
+      supabase.from("savings_goals").select("*").eq("user_id", user.id),
+      supabase
+        .from("transactions")
+        .select("amount, sender_id, category")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .gte("created_at", monthStart),
+    ]);
 
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("balance, first_name, last_name")
-        .eq("id", user.id)
-        .single();
+    const prof = profileRes.data;
+    const txs = txRes.data ?? [];
+    const goals = goalsRes.data ?? [];
+    const monthTxs = monthTxRes.data ?? [];
 
-      const rows = txs ?? [];
-      const sent = rows.filter((t) => t.sender_id === user.id);
-      const received = rows.filter((t) => t.sender_id !== user.id);
-      const totalSent = sent.reduce((s, t) => s + Number(t.amount), 0);
-      const totalReceived = received.reduce((s, t) => s + Number(t.amount), 0);
+    const monthlySent = monthTxs.filter((t) => t.sender_id === user.id);
+    const monthlyReceived = monthTxs.filter((t) => t.sender_id !== user.id);
+    const totalMonthlySent = monthlySent.reduce((s, t) => s + Number(t.amount), 0);
+    const totalMonthlyReceived = monthlyReceived.reduce((s, t) => s + Number(t.amount), 0);
 
-      const catBreakdown: Partial<Record<TransactionCategory, number>> = {};
-      sent.forEach((t) => {
-        const c = t.category as TransactionCategory;
-        catBreakdown[c] = (catBreakdown[c] ?? 0) + Number(t.amount);
-      });
-      const breakdown = Object.entries(catBreakdown)
-        .sort((a, b) => b[1] - a[1])
-        .map(([cat, amt]) => `${CATEGORY_INFO[cat as TransactionCategory]?.emoji} ${cat}: €${Number(amt).toFixed(2)}`)
-        .join("\n");
+    const catBreakdown: Partial<Record<TransactionCategory, number>> = {};
+    monthlySent.forEach((t) => {
+      const c = t.category as TransactionCategory;
+      catBreakdown[c] = (catBreakdown[c] ?? 0) + Number(t.amount);
+    });
+    const categoryBreakdown = Object.entries(catBreakdown).length > 0
+      ? Object.entries(catBreakdown)
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, amt]) => `  ${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: €${Number(amt).toFixed(2)}`)
+          .join("\n")
+      : "  No spending this month";
 
-      userMessage = `Generate a professional financial report for:
-Name: ${prof?.first_name} ${prof?.last_name}
-Current Balance: €${Number(prof?.balance ?? 0).toFixed(2)}
-Total Spent (last 50 transactions): €${totalSent.toFixed(2)}
-Total Received: €${totalReceived.toFixed(2)}
-Net: €${(totalReceived - totalSent).toFixed(2)}
+    const recentTxList = txs.slice(0, 30).map((t) => {
+      const dir = t.sender_id === user.id ? "Sent" : "Received";
+      return `  ${dir} €${Number(t.amount).toFixed(2)} · ${t.category}${t.description ? " — " + t.description : ""}`;
+    }).join("\n") || "  None";
 
-Spending by category:
-${breakdown || "No spending data"}
+    const goalsList = goals.length > 0
+      ? goals.map((g) => `  ${g.emoji ?? "🎯"} ${g.name}: €${g.current_amount}/€${g.target_amount}`).join("\n")
+      : "  None";
 
-Transaction count: ${rows.length} (${sent.length} sent, ${received.length} received)`;
+    const financialContext = `USER FINANCIAL CONTEXT:
+Name: ${prof?.first_name ?? ""} ${prof?.last_name ?? ""}
+Current balance: €${Number(prof?.balance ?? 0).toFixed(2)}
+Plan: ${prof?.plan ?? plan}
+
+This month:
+- Total spent: €${totalMonthlySent.toFixed(2)}
+- Total received: €${totalMonthlyReceived.toFixed(2)}
+
+Spending by category this month:
+${categoryBreakdown}
+
+Recent transactions (last 30):
+${recentTxList}
+
+Savings goals:
+${goalsList}
+
+Use this data when relevant to give personalized advice.
+---`;
+
+    // 6. For accountant financial-report, override userMessage with structured prompt
+    if (agentType === "accountant" && tab === "financial-report") {
+      const allTxSent = txs.filter((t) => t.sender_id === user.id);
+      const allTxReceived = txs.filter((t) => t.sender_id !== user.id);
+      userMessage = `Generate a professional financial report.
+Total Spent (last 30 transactions): €${allTxSent.reduce((s, t) => s + Number(t.amount), 0).toFixed(2)}
+Total Received: €${allTxReceived.reduce((s, t) => s + Number(t.amount), 0).toFixed(2)}
+Net: €${(allTxReceived.reduce((s, t) => s + Number(t.amount), 0) - allTxSent.reduce((s, t) => s + Number(t.amount), 0)).toFixed(2)}
+Transaction count: ${txs.length}`;
     }
 
-    // 6. Call Anthropic
+    // 7. Call Anthropic with financial context prepended to system prompt
     const history = (conversationHistory ?? []).map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
     }));
+
+    const systemPrompt = `${financialContext}\n\n${SYSTEM_PROMPTS[agentType]}`;
 
     console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-5-20250929, history:", history.length);
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: 1000,
-      system: SYSTEM_PROMPTS[agentType],
+      system: systemPrompt,
       messages: [...history, { role: "user", content: userMessage }],
     });
 
