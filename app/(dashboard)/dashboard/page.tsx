@@ -17,7 +17,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const [profileRes, txRes, goalsRes] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("profiles").select("id,first_name,last_name,balance,plan,account_number,card_frozen,created_at,currency").eq("id", user.id).single(),
     supabase
       .from("transactions")
       .select("*, sender:profiles!sender_id(id,first_name,last_name,email,avatar_url), receiver:profiles!receiver_id(id,first_name,last_name,email,avatar_url)")

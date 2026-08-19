@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { showToast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [sessionEmail, setSessionEmail] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -40,35 +41,49 @@ export default function ProfilePage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (data) {
-        setProfile(data as Profile);
-        reset({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          phone: data.phone ?? "",
-          date_of_birth: data.date_of_birth ?? "",
-        });
-      }
+
+      // Email from auth session — not from profiles table
+      setSessionEmail(user.email ?? "");
+
+      // Public profile fields only (no email/phone/date_of_birth)
+      const { data } = await supabase
+        .from("profiles")
+        .select("id,first_name,last_name,avatar_url,plan,balance,account_number,created_at,currency,card_frozen")
+        .eq("id", user.id)
+        .single();
+      if (!data) return;
+      setProfile(data as Profile);
+
+      // phone + date_of_birth via server route (admin client)
+      const res = await fetch("/api/profile");
+      const sensitive = res.ok ? await res.json() : {};
+
+      reset({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: sensitive.phone ?? "",
+        date_of_birth: sensitive.date_of_birth ?? "",
+      });
     })();
   }, [reset]);
 
   async function onSubmit(data: FormData) {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error } = await supabase.from("profiles").update({
-      first_name: data.first_name,
-      last_name: data.last_name,
-      phone: data.phone || null,
-      date_of_birth: data.date_of_birth || null,
-      updated_at: new Date().toISOString(),
-    }).eq("id", user.id);
-    if (!error) {
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone || null,
+        date_of_birth: data.date_of_birth || null,
+      }),
+    });
+    if (res.ok) {
       showToast("success", "Profile updated");
       router.refresh();
     } else {
-      showToast("error", "Update failed", error.message);
+      const err = await res.json().catch(() => ({}));
+      showToast("error", "Update failed", err.error ?? "");
     }
   }
 
@@ -126,7 +141,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <h2 className="font-sora font-bold text-xl text-[#1A1A1A]">{profile.first_name} {profile.last_name}</h2>
-              <p className="font-inter text-sm text-[#6B6B6B]">{profile.email}</p>
+              <p className="font-inter text-sm text-[#6B6B6B]">{sessionEmail}</p>
               <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-sora font-bold gold-gradient text-white">{planInfo?.name ?? profile.plan}</span>
             </div>
           </GlassCard>
@@ -176,7 +191,7 @@ export default function ProfilePage() {
             <h3 className="font-sora font-bold text-base text-[#1A1A1A] mb-5">Account Information</h3>
             <div className="space-y-3">
               {[
-                { label: "Email", value: profile.email, icon: Mail },
+                { label: "Email", value: sessionEmail, icon: Mail },
                 { label: "Account Number", value: profile.account_number, icon: CreditCard },
                 { label: "Member since", value: formatDate(profile.created_at), icon: Calendar },
               ].map(({ label, value, icon: Icon }) => (

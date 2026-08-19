@@ -40,7 +40,7 @@ export default function TransferPage() {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      const { data } = await supabase.from("profiles").select("id,balance,first_name,last_name,account_number,avatar_url,plan").eq("id", user.id).single();
       setCurrentUser(data as Profile);
     });
   }, []);
@@ -51,7 +51,7 @@ export default function TransferPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("profiles")
-      .select("id,first_name,last_name,email,avatar_url,account_number,plan")
+      .select("id,first_name,last_name,avatar_url,account_number,plan")
       .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%,account_number.ilike.%${q}%`)
       .neq("id", currentUser?.id ?? "")
       .limit(8);
@@ -159,9 +159,8 @@ export default function TransferPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-inter font-semibold text-sm text-[#1A1A1A]">{u.first_name} {u.last_name}</p>
-                          <p className="font-inter text-xs text-[#9B9B9B] truncate">{u.email}</p>
+                          <p className="font-inter text-xs text-[#9B9B9B] font-mono">{u.account_number}</p>
                         </div>
-                        <span className="text-xs font-inter text-[#9B9B9B] font-mono">{u.account_number}</span>
                       </motion.button>
                     ))}
                   </div>

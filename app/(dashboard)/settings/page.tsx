@@ -110,7 +110,7 @@ export default function SettingsPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+      const { data } = await supabase.from("profiles").select("id,balance,plan,first_name,last_name").eq("id", user.id).single();
       if (data) setProfile(data as Profile);
     })();
   }, []);
