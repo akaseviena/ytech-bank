@@ -1,0 +1,441 @@
+import Link from "next/link";
+
+export const metadata = {
+  title: "Terms of Service — Y-tech",
+  description: "The terms that govern your use of the Y-tech platform.",
+};
+
+export default function TermsPage() {
+  return (
+    <div className="min-h-screen" style={{ background: "#FAFAFA" }}>
+      {/* Header */}
+      <header
+        style={{
+          background: "#FFFFFF",
+          borderBottom: "1px solid #F0F0F0",
+          padding: "16px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+        }}
+      >
+        <span style={{ fontWeight: 800, fontSize: 20, color: "#1A1A1A" }}>
+          Y<span style={{ color: "#F5A623" }}>-tech</span>
+        </span>
+        <div style={{ display: "flex", gap: 24, fontSize: 14, fontWeight: 600 }}>
+          <Link href="/privacy" style={{ color: "#6B6B6B", textDecoration: "none" }}>
+            Privacy Policy
+          </Link>
+          <Link href="/login" style={{ color: "#F5A623", textDecoration: "none" }}>
+            Back to app
+          </Link>
+        </div>
+      </header>
+
+      {/* Content */}
+      <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 80px" }}>
+        <p style={{ fontSize: 13, color: "#9B9B9B", marginBottom: 8 }}>
+          Last updated: 24 August 2026
+        </p>
+        <h1
+          style={{
+            fontSize: 32,
+            fontWeight: 800,
+            color: "#1A1A1A",
+            marginBottom: 8,
+            lineHeight: 1.2,
+          }}
+        >
+          Terms of Service
+        </h1>
+        <p style={{ fontSize: 16, color: "#6B6B6B", marginBottom: 40, lineHeight: 1.6 }}>
+          Please read these terms before using Y-tech. By creating an account or using the
+          platform, you agree to them.
+        </p>
+
+        <Section id="what-is-ytech" title="1. What Y-tech is">
+          <p>
+            Y-tech is a <strong>financial technology demonstration platform</strong>. It
+            provides a simulated banking interface, including accounts, transfers, savings
+            goals, spending analytics, and AI-powered tools.
+          </p>
+          <p>
+            Y-tech is operated by <strong>[Company Name]</strong>, registered at{" "}
+            <strong>[Registered Address]</strong> under registration number{" "}
+            <strong>[Reg. No.]</strong>.
+          </p>
+          <p>
+            <strong>
+              Y-tech is not a bank, credit institution, payment service provider,
+              e-money institution, or any other regulated financial entity.
+            </strong>{" "}
+            It is not licensed or supervised by any financial authority. Nothing on this
+            platform constitutes a deposit, investment, or regulated financial product.
+          </p>
+        </Section>
+
+        <Section id="demo-funds" title="2. Demonstration funds only">
+          <p>
+            All balances, transactions, and transfers visible on Y-tech are{" "}
+            <strong>simulated and have no monetary value</strong>. No real money is
+            deposited, held, transferred, or at risk on this platform.
+          </p>
+          <p>
+            Y-tech does not hold client money. Y-tech accounts are not bank accounts,
+            savings accounts, or payment accounts in any legal sense. The "balance" shown
+            is a number in a database used to simulate the experience of a financial
+            application.
+          </p>
+          <p>
+            You should not rely on Y-tech to store, manage, or move real funds. If you
+            need a real banking service, use a licensed bank.
+          </p>
+        </Section>
+
+        <Section id="eligibility" title="3. Eligibility">
+          <p>
+            You must be at least <strong>18 years old</strong> to create a Y-tech
+            account. By registering, you confirm that you meet this requirement. If we
+            discover that an account belongs to someone under 18, we will close it.
+          </p>
+          <p>
+            You may only hold one Y-tech account per person. Creating multiple accounts
+            to circumvent plan limits or rate limits is not permitted.
+          </p>
+        </Section>
+
+        <Section id="account" title="4. Your account">
+          <p>
+            You are responsible for keeping your login credentials secure. Do not share
+            your password with anyone. If you suspect unauthorised access to your account,
+            contact us immediately at{" "}
+            <a href="mailto:support@ytechbank.com" style={{ color: "#F5A623" }}>
+              support@ytechbank.com
+            </a>
+            .
+          </p>
+          <p>
+            We may suspend or close an account that violates these terms, without notice
+            in cases of serious or repeated violation.
+          </p>
+        </Section>
+
+        <Section id="ai-features" title="5. AI features">
+          <p>
+            Y-tech includes an <strong>AI Assistant</strong> and{" "}
+            <strong>NeuroOffice agents</strong> (Consultant, Designer, Lawyer, Accountant,
+            Marketer, Copywriter, HR Manager, Client Manager), powered by Claude — a
+            model developed by Anthropic PBC.
+          </p>
+
+          <Callout>
+            AI outputs are general-purpose text generated by a language model. They are
+            not professional advice of any kind.
+          </Callout>
+
+          <p>
+            Specifically:
+          </p>
+          <ul>
+            <li>
+              The <strong>AI Assistant</strong> provides general observations about your
+              spending data. It does not provide financial advice, investment advice, or
+              any regulated service.
+            </li>
+            <li>
+              The <strong>Accountant agent</strong> produces illustrative financial
+              summaries. It does not prepare official financial statements, audit reports,
+              or tax filings.
+            </li>
+            <li>
+              The <strong>Lawyer agent</strong> provides general legal information. It
+              does not constitute legal advice. Any template or draft produced must be
+              reviewed by a qualified solicitor or attorney before use.
+            </li>
+            <li>
+              The <strong>Consultant</strong> and other agents provide general business
+              suggestions. They do not constitute regulated advice of any kind.
+            </li>
+          </ul>
+          <p>
+            AI models can produce inaccurate, outdated, or misleading output. Do not
+            act on AI-generated content in Y-tech for real financial, legal, tax, medical,
+            or professional decisions without independent verification.
+          </p>
+          <p>
+            When you use any AI feature, your messages and relevant account data are
+            sent to Anthropic's API to generate a response. See our{" "}
+            <Link href="/privacy#ai-and-anthropic" style={{ color: "#F5A623" }}>
+              Privacy Policy §4
+            </Link>{" "}
+            for full detail.
+          </p>
+        </Section>
+
+        <Section id="plans" title="6. Plans and access">
+          <p>
+            Y-tech offers multiple account plans (Basic, Standard, Travel, Metal,
+            Ultimate, Business). Each plan determines which features — including which
+            NeuroOffice agents — are accessible.
+          </p>
+          <p>
+            Plans are selected in-app and deducted from the account's demonstration
+            balance. There is no real charge. Plan selection is for demonstrating the
+            platform's premium feature logic, not for real billing.
+          </p>
+        </Section>
+
+        <Section id="acceptable-use" title="7. Acceptable use">
+          <p>You agree not to:</p>
+          <ul>
+            <li>Attempt to access, read, or modify another user's account or data</li>
+            <li>
+              Use the platform to develop, test, or train attacks against financial
+              systems or payment infrastructure
+            </li>
+            <li>
+              Reverse-engineer, scrape, or systematically extract data from the platform
+            </li>
+            <li>
+              Use automated scripts to create accounts, generate transactions, or
+              consume AI quota in ways that circumvent rate limits
+            </li>
+            <li>
+              Submit content through AI features that is abusive, illegal, or designed
+              to extract harmful outputs from the AI model
+            </li>
+            <li>Use the platform in any way that violates applicable law</li>
+          </ul>
+        </Section>
+
+        <Section id="intellectual-property" title="8. Intellectual property">
+          <p>
+            The Y-tech platform, including its design, code, and branding, is owned by
+            [Company Name]. You may not copy, reproduce, or distribute any part of it
+            without permission.
+          </p>
+          <p>
+            Content you create using AI features (text generated by NeuroOffice agents
+            or the AI Assistant) is generated on your behalf. You are responsible for
+            how you use it, including for any professional or commercial purpose.
+          </p>
+        </Section>
+
+        <Section id="service-availability" title="9. Service availability">
+          <p>
+            Y-tech is provided as a technology demonstration and is offered{" "}
+            <strong>as-is, without any guarantee of uptime, data persistence, or
+            feature availability</strong>. As an actively developed MVP, the platform
+            may:
+          </p>
+          <ul>
+            <li>Be updated or modified at any time, with or without notice</li>
+            <li>
+              Have account data reset during major migrations (we will give reasonable
+              notice where possible)
+            </li>
+            <li>Be temporarily unavailable due to maintenance or infrastructure issues</li>
+            <li>Be discontinued</li>
+          </ul>
+          <p>
+            Because the funds and data on Y-tech have no real monetary value, we do not
+            offer compensation for service interruptions or data loss.
+          </p>
+        </Section>
+
+        <Section id="privacy" title="10. Privacy">
+          <p>
+            Your use of Y-tech is governed by our{" "}
+            <Link href="/privacy" style={{ color: "#F5A623" }}>
+              Privacy Policy
+            </Link>
+            , which is incorporated into these terms by reference. By using the platform,
+            you acknowledge the data practices described there, including the transmission
+            of conversation data and financial context to Anthropic's API when using AI
+            features.
+          </p>
+        </Section>
+
+        <Section id="liability" title="11. Limitation of liability">
+          <p>
+            To the fullest extent permitted by applicable law, [Company Name] and its
+            directors, employees, and contractors are not liable for:
+          </p>
+          <ul>
+            <li>
+              Any loss or damage arising from your reliance on AI-generated content
+              produced by the platform
+            </li>
+            <li>
+              Loss of demonstration data resulting from service interruption, migration,
+              or discontinuation
+            </li>
+            <li>
+              Any indirect, incidental, special, or consequential loss arising from use
+              of the platform
+            </li>
+          </ul>
+          <p>
+            Nothing in these terms excludes liability for death or personal injury
+            caused by negligence, fraud, or any other liability that cannot be excluded
+            under applicable law.
+          </p>
+        </Section>
+
+        <Section id="third-party" title="12. Third-party services">
+          <p>
+            Y-tech uses the following third-party providers to operate the platform:
+            Supabase Inc. (database and authentication), Anthropic PBC (AI features),
+            and Vercel Inc. (hosting). Your use of Y-tech is subject to their respective
+            terms of service when your data passes through their infrastructure.
+          </p>
+          <p>
+            We are not responsible for the practices of these providers beyond our
+            contractual obligations to them.
+          </p>
+        </Section>
+
+        <Section id="changes" title="13. Changes to these terms">
+          <p>
+            We may update these terms at any time. The "Last updated" date at the top
+            of this page reflects the current version. For material changes, we will
+            notify registered users via in-app notification at least 14 days before
+            the change takes effect. Continued use of the platform after that date
+            constitutes acceptance of the updated terms.
+          </p>
+          <p>
+            If you disagree with updated terms, you may delete your account before they
+            take effect.
+          </p>
+        </Section>
+
+        <Section id="governing-law" title="14. Governing law">
+          <p>
+            These terms are governed by the laws of <strong>[Jurisdiction]</strong>.
+            Any dispute arising from them will be subject to the exclusive jurisdiction
+            of the courts of [Jurisdiction], except where mandatory consumer protection
+            law in your country of residence gives you broader rights.
+          </p>
+        </Section>
+
+        <Section id="contact" title="15. Contact">
+          <p>
+            <strong>[Company Name]</strong>
+            <br />
+            [Registered Address]
+            <br />
+            [Jurisdiction]
+            <br />
+            Registration number: [Reg. No.]
+            <br />
+            General enquiries:{" "}
+            <a href="mailto:support@ytechbank.com" style={{ color: "#F5A623" }}>
+              support@ytechbank.com
+            </a>
+            <br />
+            Privacy enquiries:{" "}
+            <a href="mailto:privacy@ytechbank.com" style={{ color: "#F5A623" }}>
+              privacy@ytechbank.com
+            </a>
+          </p>
+        </Section>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+// ─── Reusable layout components ──────────────────────────
+
+function Section({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      id={id}
+      style={{
+        marginBottom: 40,
+        paddingBottom: 40,
+        borderBottom: "1px solid #F0F0F0",
+      }}
+    >
+      <h2
+        style={{
+          fontSize: 20,
+          fontWeight: 800,
+          color: "#1A1A1A",
+          marginBottom: 16,
+          scrollMarginTop: 80,
+        }}
+      >
+        {title}
+      </h2>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          fontSize: 15,
+          lineHeight: 1.7,
+          color: "#3A3A3A",
+        }}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function Callout({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        background: "#FFF9EE",
+        border: "1px solid rgba(245,166,35,0.3)",
+        borderLeft: "4px solid #F5A623",
+        borderRadius: 8,
+        padding: "12px 16px",
+        fontSize: 14,
+        color: "#5A4A00",
+        fontWeight: 600,
+        lineHeight: 1.6,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <footer
+      style={{
+        borderTop: "1px solid #F0F0F0",
+        padding: "24px",
+        textAlign: "center",
+        fontSize: 13,
+        color: "#9B9B9B",
+      }}
+    >
+      <div style={{ marginBottom: 8 }}>
+        <Link href="/privacy" style={{ color: "#6B6B6B", marginRight: 16, textDecoration: "none" }}>
+          Privacy Policy
+        </Link>
+        <Link href="/terms" style={{ color: "#F5A623", textDecoration: "none", fontWeight: 600 }}>
+          Terms of Service
+        </Link>
+      </div>
+      <p>© {new Date().getFullYear()} Y-tech. All rights reserved.</p>
+    </footer>
+  );
+}
