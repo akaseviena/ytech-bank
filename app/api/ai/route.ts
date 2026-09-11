@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     ? goals.map((g) => `${g.emoji} ${g.name}: €${g.current_amount}/€${g.target_amount}`).join(", ")
     : "None";
 
-  const systemPrompt = `You are a personal AI financial assistant for Y-tech Bank. You are helpful, warm, and professional.
+  const systemPrompt = `You are a personal AI financial assistant for Y-tech. You are helpful, warm, and professional.
 Respond in the user's language (detect from their message — English or Russian).
 Always be specific and reference real numbers from the user's data.
 
@@ -79,7 +79,7 @@ ${recentTxStr || "None"}
 Savings goals: ${goalsStr}
 
 Keep responses concise (max 3 short paragraphs). Be encouraging and actionable.
-Never advise on external investments. Only discuss Y-tech Bank services and the user's data.`;
+Never advise on external investments. Only discuss Y-tech services and the user's data.`;
 
   const history: Anthropic.Messages.MessageParam[] = (conversationHistory ?? []).map((h) => ({
     role: h.role,

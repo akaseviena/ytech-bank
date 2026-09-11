@@ -42,21 +42,21 @@ export default function SplashScreen() {
           >
             <img
               src="/logo.PNG"
-              alt="Y-tech Bank"
+              alt="Y-tech"
               width={80}
               height={80}
               style={{ objectFit: "contain", borderRadius: "50%" }}
             />
           </motion.div>
 
-          {/* Bank name */}
+          {/* Brand name */}
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
             className="font-bold text-2xl mb-2 gold-text"
           >
-            Y-tech Bank
+            Y-tech
           </motion.h1>
 
           {/* Tagline */}
@@ -67,7 +67,7 @@ export default function SplashScreen() {
             className="text-sm"
             style={{ color: "#6B6B6B" }}
           >
-            Banking for the next generation
+            AI-native financial platform
           </motion.p>
 
           {/* Progress bar */}

@@ -59,21 +59,13 @@ export default function TermsPage() {
         <Section id="what-is-ytech" title="1. What Y-tech is">
           <p>
             Y-tech is a <strong>financial technology demonstration platform</strong>. It
-            provides a simulated banking interface, including accounts, transfers, savings
+            provides a simulated financial platform, including accounts, transfers, savings
             goals, spending analytics, and AI-powered tools.
           </p>
           <p>
             Y-tech is operated by <strong>[Company Name]</strong>, registered at{" "}
             <strong>[Registered Address]</strong> under registration number{" "}
             <strong>[Reg. No.]</strong>.
-          </p>
-          <p>
-            <strong>
-              Y-tech is not a bank, credit institution, payment service provider,
-              e-money institution, or any other regulated financial entity.
-            </strong>{" "}
-            It is not licensed or supervised by any financial authority. Nothing on this
-            platform constitutes a deposit, investment, or regulated financial product.
           </p>
         </Section>
 
@@ -84,15 +76,12 @@ export default function TermsPage() {
             deposited, held, transferred, or at risk on this platform.
           </p>
           <p>
-            Y-tech does not hold client money. Y-tech accounts are not bank accounts,
-            savings accounts, or payment accounts in any legal sense. The "balance" shown
-            is a number in a database used to simulate the experience of a financial
-            application.
+            Y-tech does not hold client money. The "balance" shown is a number in a
+            database used to simulate the experience of a financial platform.
           </p>
           <p>
-            You should not rely on Y-tech to store, manage, or move real funds. If you
-            need a real banking service, use a licensed bank.
-          </p>
+            You should not rely on Y-tech to store, manage, or move real funds.
+</p>
         </Section>
 
         <Section id="eligibility" title="3. Eligibility">
@@ -112,8 +101,8 @@ export default function TermsPage() {
             You are responsible for keeping your login credentials secure. Do not share
             your password with anyone. If you suspect unauthorised access to your account,
             contact us immediately at{" "}
-            <a href="mailto:support@ytechbank.com" style={{ color: "#F5A623" }}>
-              support@ytechbank.com
+            <a href="mailto:support@ytechfinance.com" style={{ color: "#F5A623" }}>
+              support@ytechfinance.com
             </a>
             .
           </p>
@@ -332,13 +321,13 @@ export default function TermsPage() {
             Registration number: [Reg. No.]
             <br />
             General enquiries:{" "}
-            <a href="mailto:support@ytechbank.com" style={{ color: "#F5A623" }}>
-              support@ytechbank.com
+            <a href="mailto:support@ytechfinance.com" style={{ color: "#F5A623" }}>
+              support@ytechfinance.com
             </a>
             <br />
             Privacy enquiries:{" "}
-            <a href="mailto:privacy@ytechbank.com" style={{ color: "#F5A623" }}>
-              privacy@ytechbank.com
+            <a href="mailto:privacy@ytechfinance.com" style={{ color: "#F5A623" }}>
+              privacy@ytechfinance.com
             </a>
           </p>
         </Section>

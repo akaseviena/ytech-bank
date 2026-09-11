@@ -66,8 +66,8 @@ export default function PrivacyPage() {
           <p>
             The Company is the data controller for all personal data processed under this
             policy. For any privacy-related question, contact us at{" "}
-            <a href="mailto:privacy@ytechbank.com" style={{ color: "#F5A623" }}>
-              privacy@ytechbank.com
+            <a href="mailto:privacy@ytechfinance.com" style={{ color: "#F5A623" }}>
+              privacy@ytechfinance.com
             </a>
             .
           </p>
@@ -239,7 +239,7 @@ export default function PrivacyPage() {
               [
                 "Access",
                 "Receive a copy of all personal data we hold about you",
-                "Email privacy@ytechbank.com",
+                "Email privacy@ytechfinance.com",
               ],
               [
                 "Rectification",
@@ -254,17 +254,17 @@ export default function PrivacyPage() {
               [
                 "Portability",
                 "Receive your data in a structured, machine-readable format (JSON)",
-                "Email privacy@ytechbank.com",
+                "Email privacy@ytechfinance.com",
               ],
               [
                 "Restriction",
                 "Ask us to stop certain processing while a dispute is resolved",
-                "Email privacy@ytechbank.com",
+                "Email privacy@ytechfinance.com",
               ],
               [
                 "Objection",
                 "Object to processing based on legitimate interests",
-                "Email privacy@ytechbank.com",
+                "Email privacy@ytechfinance.com",
               ],
               [
                 "Withdraw consent",
@@ -283,8 +283,8 @@ export default function PrivacyPage() {
         <Section id="account-deletion" title="8. Account deletion">
           <p>
             To delete your Y-tech account and all associated data, email{" "}
-            <a href="mailto:privacy@ytechbank.com" style={{ color: "#F5A623" }}>
-              privacy@ytechbank.com
+            <a href="mailto:privacy@ytechfinance.com" style={{ color: "#F5A623" }}>
+              privacy@ytechfinance.com
             </a>{" "}
             with the subject line <strong>"Account deletion request"</strong> from the
             email address registered to your account.
@@ -344,8 +344,8 @@ export default function PrivacyPage() {
             Registration number: [Reg. No.]
             <br />
             Privacy enquiries:{" "}
-            <a href="mailto:privacy@ytechbank.com" style={{ color: "#F5A623" }}>
-              privacy@ytechbank.com
+            <a href="mailto:privacy@ytechfinance.com" style={{ color: "#F5A623" }}>
+              privacy@ytechfinance.com
             </a>
           </p>
         </Section>

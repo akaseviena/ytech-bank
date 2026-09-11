@@ -1,10 +1,10 @@
-# Y-tech Bank MVP
+# Y-tech MVP
 
-A premium digital banking application built with Next.js 14, Supabase, and AI-powered insights via Claude.
+An AI-native financial platform built with Next.js 14, Supabase, and AI-powered insights via Claude.
 
-## What is Y-tech Bank?
+## What is Y-tech?
 
-Y-tech Bank is a full-featured banking MVP showcasing:
+Y-tech is a full-featured financial platform MVP showcasing:
 - **Real-time balance** with animated UI
 - **Peer-to-peer transfers** via Supabase RPC
 - **AI financial assistant** powered by Claude (claude-sonnet-4-20250514)

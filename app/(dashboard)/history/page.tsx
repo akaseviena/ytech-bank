@@ -83,7 +83,7 @@ function HistoryContent() {
         const displayName = other
           ? `${other.first_name} ${other.last_name}`
           : isWithdrawal
-          ? (tx.description ?? "Y-tech Bank")
+          ? (tx.description ?? "Y-tech")
           : "";
         if (
           !displayName.toLowerCase().includes(search.toLowerCase()) &&
@@ -167,7 +167,7 @@ function HistoryContent() {
             const name = other
               ? `${other.first_name} ${other.last_name}`
               : isWithdrawal
-              ? "Y-tech Bank"
+              ? "Y-tech"
               : isSent
               ? "External"
               : "Deposit";

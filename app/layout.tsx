@@ -3,8 +3,8 @@ import "./globals.css";
 import SplashScreen from "@/components/ui/SplashScreen";
 
 export const metadata: Metadata = {
-  title: "Y-tech Bank — Banking for the next generation",
-  description: "Premium digital banking powered by AI",
+  title: "Y-tech — AI-native financial platform",
+  description: "AI-native financial platform",
   icons: { icon: "/logo.PNG" },
 };
 

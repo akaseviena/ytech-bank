@@ -56,9 +56,9 @@ export default function LoginPage() {
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
           style={{ border: "1.5px solid rgba(245,166,35,0.5)", background: "rgba(255,255,255,0.9)" }}
         >
-          <img src="/logo.PNG" alt="Y-tech Bank" width={40} height={40} style={{ objectFit: "contain" }} />
+          <img src="/logo.PNG" alt="Y-tech" width={40} height={40} style={{ objectFit: "contain" }} />
         </div>
-        <h1 className="font-bold text-2xl gold-text">Y-tech Bank</h1>
+        <h1 className="font-bold text-2xl gold-text">Y-tech</h1>
         <p className="text-sm text-[#6B6B6B] mt-1">Welcome back</p>
       </motion.div>
 
