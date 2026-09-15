@@ -123,6 +123,11 @@ export default function LoginPage() {
               {errors.password && (
                 <p className="mt-1 text-xs text-[#FF3B30] font-inter">{errors.password.message}</p>
               )}
+              <div className="text-right mt-1">
+                <Link href="/forgot-password" className="text-xs font-inter text-[#F5A623] hover:text-[#C8860A] transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <GoldButton
