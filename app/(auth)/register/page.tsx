@@ -7,7 +7,7 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Lock, User, Calendar, Check } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Calendar, Check, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
@@ -28,10 +28,14 @@ function toInputDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 const _today = new Date();
-// Max selectable DOB: exactly 18 years before today
-const MAX_DOB = toInputDate(new Date(_today.getFullYear() - 18, _today.getMonth(), _today.getDate()));
+const _maxDobDate = new Date(_today.getFullYear() - 18, _today.getMonth(), _today.getDate());
+const _minDobDate = new Date(_today.getFullYear() - 120, _today.getMonth(), _today.getDate());
+// Max selectable DOB: exactly 18 years before today (used for the date picker's max attribute)
+const MAX_DOB = toInputDate(_maxDobDate);
 // Min selectable DOB: 120 years before today (catches obvious typos)
-const MIN_DOB = toInputDate(new Date(_today.getFullYear() - 120, _today.getMonth(), _today.getDate()));
+const MIN_DOB = toInputDate(_minDobDate);
+// Human-readable max DOB for the inline error message: DD.MM.YYYY
+const MAX_DOB_FORMATTED = `${String(_maxDobDate.getDate()).padStart(2, "0")}.${String(_maxDobDate.getMonth() + 1).padStart(2, "0")}.${_maxDobDate.getFullYear()}`;
 
 const step2Schema = z.object({
   firstName: z.string().min(1, "Required"),
@@ -64,7 +68,10 @@ const step2Schema = z.object({
 
       const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
       if (date > eighteenYearsAgo) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "You must be at least 18 years old to open an account" });
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `You must be at least 18 years old to register. Please enter a birth date on or before ${MAX_DOB_FORMATTED}.`,
+        });
         return z.NEVER;
       }
     }),
@@ -259,7 +266,7 @@ export default function RegisterPage() {
                 transition={{ duration: 0.3 }}
               >
                 <h2 className="font-sora font-bold text-xl text-[#1A1A1A] mb-6">Personal information</h2>
-                <form onSubmit={form2.handleSubmit(onStep2)} className="space-y-5">
+                <form onSubmit={form2.handleSubmit(onStep2)} className="space-y-5" noValidate>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">First name</label>
@@ -291,7 +298,12 @@ export default function RegisterPage() {
                       />
                     </div>
                     {form2.formState.errors.dateOfBirth && (
-                      <p className="mt-1 text-xs text-[#FF3B30] font-inter">{form2.formState.errors.dateOfBirth.message}</p>
+                      <div className="mt-1.5 flex items-start gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-[#FF3B30] flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-[#FF3B30] font-inter leading-snug">
+                          {form2.formState.errors.dateOfBirth.message}
+                        </p>
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-3 pt-2">
