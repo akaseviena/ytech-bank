@@ -12,8 +12,8 @@ const TABS = [
 ];
 
 const PLACEHOLDERS: Record<string, string> = {
-  "tax-planning":      "e.g. Freelancer in Germany earning €80k/year, looking to minimize income tax",
-  "cost-optimization": "e.g. SaaS company with €12k/month in expenses: €4k hosting, €3k salaries, €2k marketing, €3k tools",
+  "tax-planning":      "e.g. Freelancer in Germany earning £80k/year, looking to minimize income tax",
+  "cost-optimization": "e.g. SaaS company with £12k/month in expenses: £4k hosting, £3k salaries, £2k marketing, £3k tools",
   "financial-report":  "",
 };
 

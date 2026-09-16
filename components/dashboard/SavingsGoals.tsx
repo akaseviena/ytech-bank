@@ -129,10 +129,10 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
     if (!fundsGoal || !fundsAmount) return;
     const num = parseFloat(fundsAmount);
     if (isNaN(num) || num <= 0) { setFundsError("Enter a valid amount"); return; }
-    if (num > balance) { setFundsError(`Insufficient balance (€${balance.toFixed(2)} available)`); return; }
+    if (num > balance) { setFundsError(`Insufficient balance (£${balance.toFixed(2)} available)`); return; }
 
     const remaining = fundsGoal.target_amount - fundsGoal.current_amount;
-    if (num > remaining) { setFundsError(`Max you can add is €${remaining.toFixed(2)}`); return; }
+    if (num > remaining) { setFundsError(`Max you can add is £${remaining.toFixed(2)}`); return; }
 
     setAddingFunds(true);
     setFundsError("");
@@ -157,7 +157,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
     const updatedGoal = goalRes.data as SavingsGoal;
     setGoals((prev) => prev.map((g) => (g.id === fundsGoal.id ? updatedGoal : g)));
     setBalance((b) => b - num);
-    showToast("success", "Funds added!", `€${num.toFixed(2)} added to ${fundsGoal.name} ${fundsGoal.emoji}`);
+    showToast("success", "Funds added!", `£${num.toFixed(2)} added to ${fundsGoal.name} ${fundsGoal.emoji}`);
     setFundsGoal(null);
     setFundsAmount("");
     setAddingFunds(false);
@@ -214,8 +214,8 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
                   />
                 </div>
                 <div className="flex justify-between text-[11px] text-[#9B9B9B] font-semibold mb-3">
-                  <span>€{goal.current_amount.toFixed(0)}</span>
-                  <span>€{goal.target_amount.toFixed(0)}</span>
+                  <span>£{goal.current_amount.toFixed(0)}</span>
+                  <span>£{goal.target_amount.toFixed(0)}</span>
                 </div>
                 {!isComplete ? (
                   <button
@@ -284,7 +284,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
                   <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New laptop" className="input-field" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Target amount (€)</label>
+                  <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Target amount (£)</label>
                   <input value={target} onChange={(e) => setTarget(e.target.value)} type="number" placeholder="1000" className="input-field" />
                 </div>
                 <GoldButton
@@ -337,11 +337,11 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
               >
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-[#6B6B6B] font-medium">Current</span>
-                  <span className="font-bold text-[#1A1A1A]">€{fundsGoal.current_amount.toFixed(2)}</span>
+                  <span className="font-bold text-[#1A1A1A]">£{fundsGoal.current_amount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm mb-3">
                   <span className="text-[#6B6B6B] font-medium">Target</span>
-                  <span className="font-bold text-[#1A1A1A]">€{fundsGoal.target_amount.toFixed(2)}</span>
+                  <span className="font-bold text-[#1A1A1A]">£{fundsGoal.target_amount.toFixed(2)}</span>
                 </div>
                 <div className="h-2 bg-[#F0F0F0] rounded-full">
                   <div
@@ -350,12 +350,12 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
                   />
                 </div>
                 <p className="text-xs text-[#9B9B9B] mt-2 font-medium">
-                  €{(fundsGoal.target_amount - fundsGoal.current_amount).toFixed(2)} remaining
+                  £{(fundsGoal.target_amount - fundsGoal.current_amount).toFixed(2)} remaining
                 </p>
               </div>
 
               <div className="relative mb-5">
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Amount to add (€)</label>
+                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Amount to add (£)</label>
                 <input
                   value={fundsAmount}
                   onChange={(e) => { setFundsAmount(e.target.value); setFundsError(""); }}
@@ -368,7 +368,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
                   <p className="mt-1.5 text-xs text-[#FF3B30] font-medium">{fundsError}</p>
                 )}
                 <p className="mt-1.5 text-xs text-[#9B9B9B] font-medium">
-                  Available balance: €{balance.toFixed(2)}
+                  Available balance: £{balance.toFixed(2)}
                 </p>
               </div>
 

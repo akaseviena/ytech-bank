@@ -200,7 +200,7 @@ export default function AnalyticsPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9B9B9B" }} interval="preserveStartEnd" />
-                    <YAxis tick={{ fontSize: 10, fill: "#9B9B9B" }} tickFormatter={(v) => `€${v}`} />
+                    <YAxis tick={{ fontSize: 10, fill: "#9B9B9B" }} tickFormatter={(v) => `£${v}`} />
                     <Tooltip formatter={(v: number) => formatCurrency(v)} />
                     <Area type="monotone" dataKey="balance" stroke="#F5A623" strokeWidth={2} fill="url(#balanceGrad)" />
                   </AreaChart>
@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
                             </div>
                             <p className="flex-1 font-inter text-sm text-[#1A1A1A] truncate">{name}</p>
                             <p className={`font-sora font-bold text-sm ${isSent ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
-                              {isSent ? "-" : "+"}€{Number(tx.amount).toFixed(2)}
+                              {isSent ? "-" : "+"}£{Number(tx.amount).toFixed(2)}
                             </p>
                           </div>
                         );

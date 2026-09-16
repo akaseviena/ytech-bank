@@ -129,7 +129,7 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
         {[
           { label: "Type", value: "Virtual Debit" },
           { label: "Status", value: frozen ? "● Frozen" : "● Active", color: frozen ? "text-blue-500" : "text-[#34C759]" },
-          { label: "Daily Limit", value: "€1,000" },
+          { label: "Daily Limit", value: "£1,000" },
           { label: "CVV", value: showCvv ? "123" : "•••" },
         ].map(({ label, value, color }) => (
           <div key={label} className="flex justify-between items-center text-sm">

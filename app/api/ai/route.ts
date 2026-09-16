@@ -52,16 +52,16 @@ export async function POST(request: NextRequest) {
   });
   const breakdownStr = Object.entries(categoryBreakdown)
     .sort((a, b) => b[1] - a[1])
-    .map(([cat, amt]) => `${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: €${Number(amt).toFixed(2)}`)
+    .map(([cat, amt]) => `${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: £${Number(amt).toFixed(2)}`)
     .join(", ");
 
   const recentTxStr = txs.slice(0, 10).map((t) => {
     const dir = t.sender_id === user.id ? "Sent" : "Received";
-    return `${dir} €${Number(t.amount).toFixed(2)} (${t.category}${t.description ? " — " + t.description : ""})`;
+    return `${dir} £${Number(t.amount).toFixed(2)} (${t.category}${t.description ? " — " + t.description : ""})`;
   }).join("\n");
 
   const goalsStr = goals.length > 0
-    ? goals.map((g) => `${g.emoji} ${g.name}: €${g.current_amount}/€${g.target_amount}`).join(", ")
+    ? goals.map((g) => `${g.emoji} ${g.name}: £${g.current_amount}/£${g.target_amount}`).join(", ")
     : "None";
 
   const systemPrompt = `You are a personal AI financial assistant for Y-tech. You are helpful, warm, and professional.
@@ -69,10 +69,10 @@ Respond in the user's language (detect from their message — English or Russian
 Always be specific and reference real numbers from the user's data.
 
 User: ${profile?.first_name} ${profile?.last_name}
-Balance: €${Number(profile?.balance ?? 0).toFixed(2)}
+Balance: £${Number(profile?.balance ?? 0).toFixed(2)}
 Plan: ${profile?.plan}
-Monthly spent: €${totalSent.toFixed(2)}
-Monthly received: €${totalReceived.toFixed(2)}
+Monthly spent: £${totalSent.toFixed(2)}
+Monthly received: £${totalReceived.toFixed(2)}
 Spending by category: ${breakdownStr || "No spending this month"}
 Recent transactions:
 ${recentTxStr || "None"}

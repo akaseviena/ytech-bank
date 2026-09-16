@@ -20,7 +20,7 @@ export default function ClientManagerPage() {
 
   const placeholders: Record<string, string> = {
     "respond-to-review": "Paste the customer review here…",
-    "sales-script":      "e.g. SaaS project management tool for small teams, €29/month",
+    "sales-script":      "e.g. SaaS project management tool for small teams, £29/month",
     "handle-objection":  "e.g. 'Your price is too high compared to competitors'",
   };
   const labels: Record<string, string> = {

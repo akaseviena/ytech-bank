@@ -105,7 +105,7 @@ export const PLAN_INFO: Record<Plan, PlanInfo> = {
   standard: {
     id: "standard",
     name: "Standard",
-    price: "€4.90/mo",
+    price: "£4.90/mo",
     features: [
       "Unlimited transfers",
       "Physical + virtual card",
@@ -116,19 +116,19 @@ export const PLAN_INFO: Record<Plan, PlanInfo> = {
   travel: {
     id: "travel",
     name: "Travel",
-    price: "€9.90/mo",
+    price: "£9.90/mo",
     emoji: "✈️",
     features: [
       "5% cashback abroad",
       "Travel insurance",
-      "€800 free ATM/mo",
+      "£800 free ATM/mo",
       "Priority support",
     ],
   },
   metal: {
     id: "metal",
     name: "Metal",
-    price: "€14.90/mo",
+    price: "£14.90/mo",
     features: [
       "Premium metal card",
       "Extended insurance",
@@ -138,7 +138,7 @@ export const PLAN_INFO: Record<Plan, PlanInfo> = {
   ultimate: {
     id: "ultimate",
     name: "Ultimate",
-    price: "€34.90/mo",
+    price: "£34.90/mo",
     emoji: "👑",
     popular: true,
     features: [
@@ -152,7 +152,7 @@ export const PLAN_INFO: Record<Plan, PlanInfo> = {
   business: {
     id: "business",
     name: "Business",
-    price: "from €30/mo",
+    price: "from £30/mo",
     features: [
       "10 corporate cards",
       "Full NeuroOffice AI",

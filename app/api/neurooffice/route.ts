@@ -177,27 +177,27 @@ export async function POST(request: NextRequest) {
     const categoryBreakdown = Object.entries(catBreakdown).length > 0
       ? Object.entries(catBreakdown)
           .sort((a, b) => b[1] - a[1])
-          .map(([cat, amt]) => `  ${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: €${Number(amt).toFixed(2)}`)
+          .map(([cat, amt]) => `  ${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: £${Number(amt).toFixed(2)}`)
           .join("\n")
       : "  No spending this month";
 
     const recentTxList = txs.slice(0, 30).map((t) => {
       const dir = t.sender_id === user.id ? "Sent" : "Received";
-      return `  ${dir} €${Number(t.amount).toFixed(2)} · ${t.category}${t.description ? " — " + t.description : ""}`;
+      return `  ${dir} £${Number(t.amount).toFixed(2)} · ${t.category}${t.description ? " — " + t.description : ""}`;
     }).join("\n") || "  None";
 
     const goalsList = goals.length > 0
-      ? goals.map((g) => `  ${g.emoji ?? "🎯"} ${g.name}: €${g.current_amount}/€${g.target_amount}`).join("\n")
+      ? goals.map((g) => `  ${g.emoji ?? "🎯"} ${g.name}: £${g.current_amount}/£${g.target_amount}`).join("\n")
       : "  None";
 
     const financialContext = `USER FINANCIAL CONTEXT:
 Name: ${prof?.first_name ?? ""} ${prof?.last_name ?? ""}
-Current balance: €${Number(prof?.balance ?? 0).toFixed(2)}
+Current balance: £${Number(prof?.balance ?? 0).toFixed(2)}
 Plan: ${prof?.plan ?? plan}
 
 This month:
-- Total spent: €${totalMonthlySent.toFixed(2)}
-- Total received: €${totalMonthlyReceived.toFixed(2)}
+- Total spent: £${totalMonthlySent.toFixed(2)}
+- Total received: £${totalMonthlyReceived.toFixed(2)}
 
 Spending by category this month:
 ${categoryBreakdown}
@@ -216,9 +216,9 @@ Use this data when relevant to give personalized advice.
       const allTxSent = txs.filter((t) => t.sender_id === user.id);
       const allTxReceived = txs.filter((t) => t.sender_id !== user.id);
       userMessage = `Generate a professional financial report.
-Total Spent (last 30 transactions): €${allTxSent.reduce((s, t) => s + Number(t.amount), 0).toFixed(2)}
-Total Received: €${allTxReceived.reduce((s, t) => s + Number(t.amount), 0).toFixed(2)}
-Net: €${(allTxReceived.reduce((s, t) => s + Number(t.amount), 0) - allTxSent.reduce((s, t) => s + Number(t.amount), 0)).toFixed(2)}
+Total Spent (last 30 transactions): £${allTxSent.reduce((s, t) => s + Number(t.amount), 0).toFixed(2)}
+Total Received: £${allTxReceived.reduce((s, t) => s + Number(t.amount), 0).toFixed(2)}
+Net: £${(allTxReceived.reduce((s, t) => s + Number(t.amount), 0) - allTxSent.reduce((s, t) => s + Number(t.amount), 0)).toFixed(2)}
 Transaction count: ${txs.length}`;
     }
 

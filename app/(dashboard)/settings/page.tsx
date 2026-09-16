@@ -180,7 +180,7 @@ export default function SettingsPage() {
                   Currently on{" "}
                   <span className="text-[#F5A623] font-semibold">{PLAN_INFO[profile.plan].name}</span>
                   {" "}· Balance:{" "}
-                  <span className="font-semibold text-[#1A1A1A]">€{profile.balance.toFixed(2)}</span>
+                  <span className="font-semibold text-[#1A1A1A]">£{profile.balance.toFixed(2)}</span>
                 </p>
               )}
             </div>
@@ -331,7 +331,7 @@ export default function SettingsPage() {
                 </p>
                 {pendingPrice > 0 ? (
                   <p className="text-sm text-[#6B6B6B]">
-                    <span className="font-bold text-[#F5A623]">€{pendingPrice.toFixed(2)}</span>{" "}
+                    <span className="font-bold text-[#F5A623]">£{pendingPrice.toFixed(2)}</span>{" "}
                     will be deducted from your balance
                   </p>
                 ) : (
@@ -339,7 +339,7 @@ export default function SettingsPage() {
                 )}
                 {profile && pendingPrice > 0 && (
                   <p className="text-xs text-[#9B9B9B] mt-2">
-                    Current balance: €{profile.balance.toFixed(2)} → €{(profile.balance - pendingPrice).toFixed(2)}
+                    Current balance: £{profile.balance.toFixed(2)} → £{(profile.balance - pendingPrice).toFixed(2)}
                   </p>
                 )}
               </div>

@@ -197,7 +197,7 @@ function HistoryContent() {
                     </div>
                     <div className="text-right flex-shrink-0 mr-2">
                       <p className={`font-sora font-bold text-sm ${isSent ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
-                        {isSent ? "-" : "+"}€{Number(tx.amount).toFixed(2)}
+                        {isSent ? "-" : "+"}£{Number(tx.amount).toFixed(2)}
                       </p>
                       <p className="font-inter text-[11px] text-[#9B9B9B]">{formatDateTime(tx.created_at).split(" · ")[0]}</p>
                     </div>

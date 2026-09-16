@@ -12,7 +12,7 @@ export type MobileAgentId =
   | "client_manager";
 
 function sym(currency: string): string {
-  return currency === "EUR" ? "€" : currency;
+  return currency === "GBP" ? "£" : currency;
 }
 
 export async function buildAssistantContext(userId: string): Promise<string> {
@@ -45,7 +45,7 @@ export async function buildAssistantContext(userId: string): Promise<string> {
   const txs = txRes.data ?? [];
   const goals = goalsRes.data ?? [];
   const monthTxs = monthTxRes.data ?? [];
-  const currency = prof?.currency ?? "EUR";
+  const currency = prof?.currency ?? "GBP";
   const s = sym(currency);
 
   const monthlySent = monthTxs.filter((t) => t.sender_id === userId);
@@ -111,7 +111,7 @@ export async function buildAgentContext(
     .single();
 
   const prof = profileRes.data;
-  const currency = prof?.currency ?? "EUR";
+  const currency = prof?.currency ?? "GBP";
   const s = sym(currency);
   const balance = Number(prof?.balance ?? 0);
   const taxReserve = balance * 0.1;

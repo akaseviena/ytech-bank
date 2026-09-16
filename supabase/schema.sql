@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     CHECK (plan IN ('basic','standard','travel','metal','ultimate','business')),
   balance DECIMAL(12,2) NOT NULL DEFAULT 1000.00,
   account_number TEXT UNIQUE NOT NULL,
-  currency TEXT NOT NULL DEFAULT 'EUR',
+  currency TEXT NOT NULL DEFAULT 'GBP',
   card_frozen BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -89,8 +89,8 @@ BEGIN
   INSERT INTO transactions (sender_id,receiver_id,amount,description,category,type,status)
   VALUES (p_sender_id,p_receiver_id,p_amount,p_description,p_category,'transfer','completed');
   INSERT INTO notifications (user_id,title,message,type) VALUES
-    (p_sender_id,'Transfer sent','You sent €'||p_amount||COALESCE(' · '||p_description,''),'transfer'),
-    (p_receiver_id,'Money received','You received €'||p_amount||COALESCE(' · '||p_description,''),'transfer');
+    (p_sender_id,'Transfer sent','You sent £'||p_amount||COALESCE(' · '||p_description,''),'transfer'),
+    (p_receiver_id,'Money received','You received £'||p_amount||COALESCE(' · '||p_description,''),'transfer');
   RETURN jsonb_build_object('success',true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -25,7 +25,7 @@ function AnimatedNumber({ value }: { value: number }) {
 
   return (
     <span>
-      €{display.toLocaleString("en-EU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      £{display.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
     </span>
   );
 }

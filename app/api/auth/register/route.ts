@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       plan,
       account_number: accountNumber,
       balance: 1000.0,
-      currency: "EUR",
+      currency: "GBP",
       card_frozen: false,
     },
     { onConflict: "id" }

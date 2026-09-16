@@ -94,7 +94,7 @@ export default function TransferPage() {
           <GlassCard className="p-8 w-full">
             <SuccessAnimation
               message="Transfer Sent!"
-              subtitle={`€${parseFloat(amount).toFixed(2)} sent to ${recipient?.first_name} ${recipient?.last_name}`}
+              subtitle={`£${parseFloat(amount).toFixed(2)} sent to ${recipient?.first_name} ${recipient?.last_name}`}
             />
           </GlassCard>
         </div>
@@ -192,7 +192,7 @@ export default function TransferPage() {
 
                 <div className="text-center mb-6">
                   <div className="relative inline-block">
-                    <span className="font-sora text-5xl font-bold text-[#1A1A1A]">€</span>
+                    <span className="font-sora text-5xl font-bold text-[#1A1A1A]">£</span>
                     <input
                       value={amount}
                       onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
@@ -216,7 +216,7 @@ export default function TransferPage() {
                       onClick={() => setAmount(String(a))}
                       className={`px-4 py-2 rounded-xl text-sm font-inter font-semibold transition-all ${amount === String(a) ? "gold-gradient text-white" : "border border-[rgba(245,166,35,0.3)] text-[#F5A623] hover:bg-[rgba(245,166,35,0.06)]"}`}
                     >
-                      €{a}
+                      £{a}
                     </motion.button>
                   ))}
                 </div>
