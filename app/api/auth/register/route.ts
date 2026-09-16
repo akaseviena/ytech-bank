@@ -25,6 +25,26 @@ export async function POST(request: NextRequest) {
 
   const { email, password, firstName, lastName, dateOfBirth, plan } = parsed.data;
 
+  // Age verification (defense in depth — also enforced client-side)
+  if (!dateOfBirth) {
+    return NextResponse.json({ error: "Date of birth is required" }, { status: 400 });
+  }
+  const [dobY, dobM, dobD] = dateOfBirth.split("-").map(Number);
+  const dob = new Date(dobY, dobM - 1, dobD);
+  const ageCheckToday = new Date();
+  ageCheckToday.setHours(0, 0, 0, 0);
+  if (isNaN(dob.getTime()) || dob > ageCheckToday) {
+    return NextResponse.json({ error: "Please enter a valid date of birth" }, { status: 400 });
+  }
+  const eighteenYearsAgo = new Date(ageCheckToday.getFullYear() - 18, ageCheckToday.getMonth(), ageCheckToday.getDate());
+  if (dob > eighteenYearsAgo) {
+    return NextResponse.json({ error: "You must be at least 18 years old to open an account" }, { status: 400 });
+  }
+  const maxAgeDate = new Date(ageCheckToday.getFullYear() - 120, ageCheckToday.getMonth(), ageCheckToday.getDate());
+  if (dob < maxAgeDate) {
+    return NextResponse.json({ error: "Please enter a valid date of birth" }, { status: 400 });
+  }
+
   // Create the auth user via admin API
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,

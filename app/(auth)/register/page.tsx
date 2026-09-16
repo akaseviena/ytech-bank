@@ -24,10 +24,50 @@ const step1Schema = z
     path: ["confirmPassword"],
   });
 
+function toInputDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+const _today = new Date();
+// Max selectable DOB: exactly 18 years before today
+const MAX_DOB = toInputDate(new Date(_today.getFullYear() - 18, _today.getMonth(), _today.getDate()));
+// Min selectable DOB: 120 years before today (catches obvious typos)
+const MIN_DOB = toInputDate(new Date(_today.getFullYear() - 120, _today.getMonth(), _today.getDate()));
+
 const step2Schema = z.object({
   firstName: z.string().min(1, "Required"),
   lastName: z.string().min(1, "Required"),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: z
+    .string()
+    .min(1, "Date of birth is required")
+    .superRefine((dob, ctx) => {
+      const [y, m, d] = dob.split("-").map(Number);
+      const date = new Date(y, m - 1, d);
+
+      if (isNaN(date.getTime())) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid date" });
+        return z.NEVER;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (date > today) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date of birth cannot be in the future" });
+        return z.NEVER;
+      }
+
+      const minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
+      if (date < minDate) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter a valid date of birth" });
+        return z.NEVER;
+      }
+
+      const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+      if (date > eighteenYearsAgo) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "You must be at least 18 years old to open an account" });
+        return z.NEVER;
+      }
+    }),
 });
 
 type Step1Data = z.infer<typeof step1Schema>;
@@ -239,11 +279,20 @@ export default function RegisterPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Date of birth <span className="text-[#9B9B9B]">(optional)</span></label>
+                    <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Date of birth</label>
                     <div className="relative">
                       <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B6B6B]" />
-                      <input {...form2.register("dateOfBirth")} type="date" className="input-field pl-10" />
+                      <input
+                        {...form2.register("dateOfBirth")}
+                        type="date"
+                        max={MAX_DOB}
+                        min={MIN_DOB}
+                        className={`input-field pl-10 ${form2.formState.errors.dateOfBirth ? "error" : ""}`}
+                      />
                     </div>
+                    {form2.formState.errors.dateOfBirth && (
+                      <p className="mt-1 text-xs text-[#FF3B30] font-inter">{form2.formState.errors.dateOfBirth.message}</p>
+                    )}
                   </div>
                   <div className="flex gap-3 pt-2">
                     <GoldButton type="button" variant="outline" size="lg" className="flex-1" onClick={() => setStep(1)}>Back</GoldButton>
