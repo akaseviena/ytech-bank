@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import { ToastProvider } from "@/components/ui/Toast";
+import FeedbackButton from "@/components/ui/FeedbackButton";
 import type { Profile, Notification } from "@/types";
 
 export default async function DashboardLayout({
@@ -44,6 +45,7 @@ export default async function DashboardLayout({
           notifications={(notifications ?? []) as Notification[]}
           userId={user.id}
         />
+        <FeedbackButton userEmail={user.email} />
       </div>
     </ToastProvider>
   );
