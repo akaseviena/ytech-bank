@@ -206,6 +206,20 @@ export default function FeedbackButton({ userEmail }: FeedbackButtonProps) {
                     transition: "opacity 0.4s ease",
                   }}
                 />
+
+                {loaded && (
+                  <p className="text-center text-xs font-inter text-[#9B9B9B] px-4 pb-2 leading-snug">
+                    Sent via Tally.{" "}
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noopener"
+                      style={{ color: "#F5A623" }}
+                    >
+                      See our Privacy Policy.
+                    </a>
+                  </p>
+                )}
               </div>
             </motion.div>
           </motion.div>

@@ -18,6 +18,11 @@ const step1Schema = z
     email: z.string().email("Invalid email"),
     password: z.string().min(8, "Min 8 characters"),
     confirmPassword: z.string(),
+    termsAccepted: z
+      .boolean()
+      .refine((v) => v === true, {
+        message: "Please accept the Terms of Use and Privacy Policy to continue",
+      }),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: "Passwords don't match",
@@ -90,7 +95,11 @@ export default function RegisterPage() {
   const [serverError, setServerError] = useState("");
   const [formData, setFormData] = useState<Partial<Step1Data & Step2Data>>({});
 
-  const form1 = useForm<Step1Data>({ resolver: zodResolver(step1Schema) });
+  const form1 = useForm<Step1Data>({
+    resolver: zodResolver(step1Schema),
+    defaultValues: { termsAccepted: false },
+  });
+  const termsWatched = form1.watch("termsAccepted");
   const form2 = useForm<Step2Data>({ resolver: zodResolver(step2Schema) });
 
   async function onStep1(data: Step1Data) {
@@ -247,7 +256,71 @@ export default function RegisterPage() {
                     </div>
                     {form1.formState.errors.confirmPassword && <p className="mt-1 text-xs text-[#FF3B30] font-inter">{form1.formState.errors.confirmPassword.message}</p>}
                   </div>
-                  <GoldButton type="submit" size="lg" className="w-full mt-2">Continue</GoldButton>
+                  {/* Consent checkbox */}
+                  <div className="space-y-3 pt-1">
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <input
+                        {...form1.register("termsAccepted")}
+                        type="checkbox"
+                        className="sr-only"
+                      />
+                      {/* Custom checkbox visual */}
+                      <div
+                        className="mt-0.5 w-5 h-5 rounded flex-shrink-0 border-2 transition-all flex items-center justify-center"
+                        style={
+                          termsWatched
+                            ? {
+                                background: "linear-gradient(135deg, #FFD700 0%, #F5A623 100%)",
+                                borderColor: "#F5A623",
+                              }
+                            : { background: "#FFFFFF", borderColor: "#D0D0D0" }
+                        }
+                        aria-hidden="true"
+                      >
+                        {termsWatched && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className="text-sm font-inter text-[#3A3A3A] leading-snug">
+                        I agree to the{" "}
+                        <a
+                          href="/terms"
+                          target="_blank"
+                          rel="noopener"
+                          className="text-[#F5A623] font-semibold hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Terms of Use
+                        </a>
+                        {" "}and confirm I have read the{" "}
+                        <a
+                          href="/privacy"
+                          target="_blank"
+                          rel="noopener"
+                          className="text-[#F5A623] font-semibold hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Privacy Policy
+                        </a>
+                      </span>
+                    </label>
+
+                    {form1.formState.errors.termsAccepted && (
+                      <div className="flex items-start gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 text-[#FF3B30] flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-[#FF3B30] font-inter leading-snug">
+                          {form1.formState.errors.termsAccepted.message}
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="text-xs font-inter text-[#9B9B9B] leading-snug">
+                      This is an early-access prototype using demonstration funds. Please do not
+                      enter real financial information.
+                    </p>
+                  </div>
+
+                  <GoldButton type="submit" size="lg" className="w-full mt-2" disabled={!termsWatched}>
+                    Continue
+                  </GoldButton>
                 </form>
                 <p className="mt-6 text-center font-inter text-sm text-[#6B6B6B]">
                   Already have an account?{" "}
