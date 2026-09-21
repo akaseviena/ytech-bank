@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Sparkles, Plus, X } from "lucide-react";
+import { Send, Sparkles, Plus, X, Clock } from "lucide-react";
 import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
@@ -13,6 +13,8 @@ interface Message {
   content: string;
   timestamp: string;
 }
+
+const DAILY_LIMIT = 50;
 
 const SUGGESTED = [
   "How am I spending this month?",
@@ -58,27 +60,91 @@ function HistorySkeleton() {
   );
 }
 
+function LimitCard({ resetIn }: { resetIn: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="my-4"
+    >
+      <div
+        className="p-5 rounded-[24px]"
+        style={{
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          border: "1.5px solid rgba(245,166,35,0.35)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)",
+        }}
+      >
+        <div className="flex flex-col items-center text-center gap-3">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center"
+            style={{ background: "rgba(245,166,35,0.1)", border: "1px solid rgba(245,166,35,0.25)" }}
+          >
+            <Clock className="w-6 h-6 text-[#F5A623]" />
+          </div>
+          <div>
+            <p className="font-bold text-[#1A1A1A] mb-1.5">
+              You&apos;ve reached today&apos;s message limit (50/50) 🙏
+            </p>
+            <p className="text-sm text-[#6B6B6B] leading-relaxed">
+              We&apos;re in early testing and keeping usage limits in place to make sure everyone gets a fair shot at trying Y-tech. Your limit resets at midnight UTC — thank you for helping us test!
+            </p>
+            <p className="text-sm text-[#6B6B6B] mt-2">
+              In the meantime, feel free to explore other parts of the app.
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+            style={{ background: "rgba(245,166,35,0.1)", color: "#F5A623" }}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            Resets in {resetIn}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function AIAssistantPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [dailyCount, setDailyCount] = useState<number | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
+  const [resetIn, setResetIn] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Stable supabase client and conversation identifiers — stored in refs
-  // to avoid re-renders during background saves.
   const supabase = useRef(createClient());
   const userIdRef = useRef("");
   const convIdRef = useRef("");
 
+  // Compute countdown string
+  useEffect(() => {
+    function compute() {
+      const midnight = new Date();
+      midnight.setUTCHours(24, 0, 0, 0);
+      const diff = midnight.getTime() - Date.now();
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      setResetIn(`${h}h ${m}m`);
+    }
+    compute();
+    const id = setInterval(compute, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, loading, limitReached]);
 
-  // Load persisted conversation on mount
+  // Load persisted conversation and daily count on mount
   useEffect(() => {
     async function init() {
       try {
@@ -86,35 +152,45 @@ export default function AIAssistantPage() {
         if (!user) return;
         userIdRef.current = user.id;
 
-        // One conversation per user per browser, keyed by a UUID stored in localStorage.
-        // This lets the web assistant maintain one persistent thread without interfering
-        // with the mobile app's multi-conversation rows in the same table.
-        const storageKey = `ai_conv_${user.id}`;
-        let id = localStorage.getItem(storageKey);
-
-        if (id) {
-          const { data } = await supabase.current
-            .from("ai_conversations")
-            .select("messages")
-            .eq("id", id)
+        const today = new Date().toISOString().split("T")[0];
+        const [convResult, usageResult] = await Promise.all([
+          (async () => {
+            const storageKey = `ai_conv_${user.id}`;
+            let id = localStorage.getItem(storageKey);
+            if (id) {
+              const { data } = await supabase.current
+                .from("ai_conversations")
+                .select("messages")
+                .eq("id", id)
+                .eq("user_id", user.id)
+                .maybeSingle();
+              if (data?.messages && (data.messages as Message[]).length > 0) {
+                setMessages(data.messages as Message[]);
+              } else if (!data) {
+                id = crypto.randomUUID();
+                localStorage.setItem(storageKey, id);
+              }
+            } else {
+              id = crypto.randomUUID();
+              localStorage.setItem(storageKey, id);
+            }
+            return id;
+          })(),
+          supabase.current
+            .from("daily_usage")
+            .select("message_count")
             .eq("user_id", user.id)
-            .maybeSingle();
+            .eq("usage_date", today)
+            .maybeSingle(),
+        ]);
 
-          if (data?.messages && (data.messages as Message[]).length > 0) {
-            setMessages(data.messages as Message[]);
-          } else if (!data) {
-            // Row was deleted externally — generate a fresh ID
-            id = crypto.randomUUID();
-            localStorage.setItem(storageKey, id);
-          }
-        } else {
-          id = crypto.randomUUID();
-          localStorage.setItem(storageKey, id);
-        }
+        convIdRef.current = convResult as string;
 
-        convIdRef.current = id;
+        const count = (usageResult.data?.message_count as number | null) ?? 0;
+        setDailyCount(count);
+        if (count >= DAILY_LIMIT) setLimitReached(true);
       } catch {
-        // Gracefully fall through to empty state (e.g. RLS not yet applied)
+        // Gracefully fall through to empty state
       } finally {
         setHistoryLoading(false);
       }
@@ -131,15 +207,13 @@ export default function AIAssistantPage() {
         messages: msgs,
         updated_at: new Date().toISOString(),
       });
-    } catch { /* non-critical — UI is already updated */ }
+    } catch { /* non-critical */ }
   }
 
   async function sendMessage(text: string) {
-    if (!text.trim() || loading) return;
+    if (!text.trim() || loading || limitReached) return;
 
     const userMsg: Message = { role: "user", content: text, timestamp: new Date().toISOString() };
-    // Build history before adding the new user message — the API receives history
-    // as the prior context and appends the new message itself.
     const conversationHistory = messages.map((m) => ({ role: m.role, content: m.content }));
     const newMessages = [...messages, userMsg];
 
@@ -153,7 +227,19 @@ export default function AIAssistantPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, conversationHistory }),
       });
-      const data = await res.json() as { reply?: string; error?: string };
+
+      if (res.status === 429) {
+        setLimitReached(true);
+        setDailyCount(DAILY_LIMIT);
+        setMessages(newMessages); // keep the user message visible
+        return;
+      }
+
+      const data = await res.json() as { reply?: string; error?: string; messagesUsed?: number };
+      if (data.messagesUsed !== undefined) {
+        setDailyCount(data.messagesUsed);
+        if (data.messagesUsed >= DAILY_LIMIT) setLimitReached(true);
+      }
       if (data.reply) {
         const assistantMsg: Message = {
           role: "assistant",
@@ -180,7 +266,6 @@ export default function AIAssistantPage() {
           .eq("id", convIdRef.current)
           .eq("user_id", userIdRef.current);
       } catch { /* ignore */ }
-      // Give this browser session a fresh conversation slot
       const newId = crypto.randomUUID();
       localStorage.setItem(`ai_conv_${userIdRef.current}`, newId);
       convIdRef.current = newId;
@@ -189,6 +274,8 @@ export default function AIAssistantPage() {
     setInput("");
     setShowClearConfirm(false);
   }
+
+  const inputDisabled = loading || historyLoading || limitReached;
 
   return (
     <PageTransition>
@@ -206,7 +293,7 @@ export default function AIAssistantPage() {
             <p className="text-xs text-[#6B6B6B]">Powered by Claude · Your personal finance advisor</p>
           </div>
           <AnimatePresence>
-            {!historyLoading && messages.length > 0 && (
+            {!historyLoading && messages.length > 0 && !limitReached && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -227,7 +314,7 @@ export default function AIAssistantPage() {
             <HistorySkeleton />
           ) : (
             <>
-              {messages.length === 0 && (
+              {messages.length === 0 && !limitReached && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -303,13 +390,15 @@ export default function AIAssistantPage() {
                 </motion.div>
               )}
 
+              {limitReached && <LimitCard resetIn={resetIn} />}
+
               <div ref={bottomRef} />
             </>
           )}
         </div>
 
-        {/* Suggested chips when conversation is short */}
-        {!historyLoading && messages.length > 0 && messages.length < 4 && (
+        {/* Suggested chips */}
+        {!historyLoading && messages.length > 0 && messages.length < 4 && !limitReached && (
           <div className="px-6 pb-3 flex gap-2 overflow-x-auto">
             {SUGGESTED.map((s) => (
               <button
@@ -329,33 +418,39 @@ export default function AIAssistantPage() {
           style={{
             background: "#FFFFFF",
             borderTop: "1px solid #F0F0F0",
-            borderRadius: 0,
             paddingBottom: "max(16px, env(safe-area-inset-bottom))",
           }}
         >
-          <div className="flex gap-3 max-w-3xl mx-auto">
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
-              placeholder="Ask about your finances…"
-              className="input-field flex-1"
-              disabled={loading || historyLoading}
-            />
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim() || loading || historyLoading}
-              className="w-11 h-11 rounded-2xl gold-gradient text-white flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </motion.button>
+          <div className="flex flex-col gap-1.5 max-w-3xl mx-auto">
+            <div className="flex gap-3">
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
+                placeholder={limitReached ? "Daily limit reached — resets at midnight UTC" : "Ask about your finances…"}
+                className="input-field flex-1"
+                disabled={inputDisabled}
+              />
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => sendMessage(input)}
+                disabled={!input.trim() || inputDisabled}
+                className="w-11 h-11 rounded-2xl gold-gradient text-white flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </motion.button>
+            </div>
+            {dailyCount !== null && !limitReached && dailyCount > 0 && (
+              <p className="text-right text-[11px] text-[#C0C0C0] pr-14">
+                {dailyCount}/{DAILY_LIMIT} messages today
+              </p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── New conversation confirmation modal ── */}
+      {/* New conversation confirmation modal */}
       <AnimatePresence>
         {showClearConfirm && (
           <motion.div

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Copy, Check, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Copy, Check, Loader2, Plus, Clock } from "lucide-react";
 import Link from "next/link";
 import GoldButton from "@/components/ui/GoldButton";
 import PageTransition from "@/components/ui/PageTransition";
@@ -10,6 +10,8 @@ import { createClient } from "@/lib/supabase/client";
 import type { AgentType } from "@/types";
 
 type Message = { role: "user" | "assistant"; content: string };
+
+const DAILY_LIMIT = 50;
 
 interface AgentPageShellProps {
   agentType: AgentType;
@@ -40,6 +42,54 @@ function FormSkeleton() {
   );
 }
 
+function LimitCard({ resetIn }: { resetIn: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="my-4"
+    >
+      <div
+        className="p-5 rounded-[24px]"
+        style={{
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          border: "1.5px solid rgba(245,166,35,0.35)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)",
+        }}
+      >
+        <div className="flex flex-col items-center text-center gap-3">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center"
+            style={{ background: "rgba(245,166,35,0.1)", border: "1px solid rgba(245,166,35,0.25)" }}
+          >
+            <Clock className="w-6 h-6 text-[#F5A623]" />
+          </div>
+          <div>
+            <p className="font-bold text-[#1A1A1A] mb-1.5">
+              You&apos;ve reached today&apos;s message limit (50/50) 🙏
+            </p>
+            <p className="text-sm text-[#6B6B6B] leading-relaxed">
+              We&apos;re in early testing and keeping usage limits in place to make sure everyone gets a fair shot at trying Y-tech. Your limit resets at midnight UTC — thank you for helping us test!
+            </p>
+            <p className="text-sm text-[#6B6B6B] mt-2">
+              In the meantime, feel free to explore other parts of the app.
+            </p>
+          </div>
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+            style={{ background: "rgba(245,166,35,0.1)", color: "#F5A623" }}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            Resets in {resetIn}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function AgentPageShell({
   agentType,
   emoji,
@@ -57,6 +107,9 @@ export default function AgentPageShell({
   const [error, setError] = useState("");
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [dailyCount, setDailyCount] = useState<number | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
+  const [resetIn, setResetIn] = useState("");
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const supabase = useRef(createClient());
@@ -64,13 +117,28 @@ export default function AgentPageShell({
 
   const chatStarted = messages.length > 0;
 
+  // Compute countdown string, update every minute
+  useEffect(() => {
+    function compute() {
+      const midnight = new Date();
+      midnight.setUTCHours(24, 0, 0, 0);
+      const diff = midnight.getTime() - Date.now();
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      setResetIn(`${h}h ${m}m`);
+    }
+    compute();
+    const id = setInterval(compute, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (chatStarted) {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, loading, chatStarted]);
+  }, [messages, loading, chatStarted, limitReached]);
 
-  // Load persisted conversation for this agent on mount
+  // Load persisted conversation and daily count on mount
   useEffect(() => {
     async function init() {
       try {
@@ -78,22 +146,35 @@ export default function AgentPageShell({
         if (!user) return;
         userIdRef.current = user.id;
 
-        const { data } = await supabase.current
-          .from("neurooffice_conversations")
-          .select("messages")
-          .eq("user_id", user.id)
-          .eq("agent_type", agentType)
-          .maybeSingle();
+        const today = new Date().toISOString().split("T")[0];
+        const [convResult, usageResult] = await Promise.all([
+          supabase.current
+            .from("neurooffice_conversations")
+            .select("messages")
+            .eq("user_id", user.id)
+            .eq("agent_type", agentType)
+            .maybeSingle(),
+          supabase.current
+            .from("daily_usage")
+            .select("message_count")
+            .eq("user_id", user.id)
+            .eq("usage_date", today)
+            .maybeSingle(),
+        ]);
 
-        if (data?.messages && Array.isArray(data.messages) && (data.messages as unknown[]).length > 0) {
-          const loaded = (data.messages as { role: string; content: string }[]).map((m) => ({
+        if (convResult.data?.messages && Array.isArray(convResult.data.messages) && (convResult.data.messages as unknown[]).length > 0) {
+          const loaded = (convResult.data.messages as { role: string; content: string }[]).map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
           }));
           setMessages(loaded);
         }
+
+        const count = (usageResult.data?.message_count as number | null) ?? 0;
+        setDailyCount(count);
+        if (count >= DAILY_LIMIT) setLimitReached(true);
       } catch {
-        // Gracefully fall through to empty state (e.g. table not yet created)
+        // Gracefully fall through to empty state
       } finally {
         setHistoryLoading(false);
       }
@@ -113,7 +194,7 @@ export default function AgentPageShell({
         },
         { onConflict: "user_id,agent_type" },
       );
-    } catch { /* non-critical — UI is already updated */ }
+    } catch { /* non-critical */ }
   }
 
   async function sendToApi(payload: Record<string, unknown>, history: Message[]) {
@@ -122,15 +203,26 @@ export default function AgentPageShell({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ agentType, ...payload, conversationHistory: history }),
     });
-    const data = await res.json() as { result?: string; error?: string };
+    const data = await res.json() as { result?: string; error?: string; messagesUsed?: number; limitReached?: boolean };
+
+    if (res.status === 429) {
+      setLimitReached(true);
+      setDailyCount(DAILY_LIMIT);
+      throw new Error("LIMIT_REACHED");
+    }
     if (!res.ok) throw new Error(data.error ?? "Generation failed");
+
+    if (data.messagesUsed !== undefined) {
+      setDailyCount(data.messagesUsed);
+      if (data.messagesUsed >= DAILY_LIMIT) setLimitReached(true);
+    }
     return data.result ?? "";
   }
 
   async function handleGenerate() {
     const payload = buildPayload();
     const displayText = (payload.input as string | undefined)?.trim() ?? "";
-    if (!displayText) return;
+    if (!displayText || limitReached) return;
 
     setLoading(true);
     setError("");
@@ -144,8 +236,12 @@ export default function AgentPageShell({
       setMessages(newMessages);
       await persist(newMessages);
     } catch (err) {
-      setMessages([]);
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      if (err instanceof Error && err.message === "LIMIT_REACHED") {
+        setMessages([]); // clear unprocessed user message
+      } else {
+        setMessages([]);
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+      }
     } finally {
       setLoading(false);
     }
@@ -153,7 +249,7 @@ export default function AgentPageShell({
 
   async function handleFollowUp() {
     const text = followUp.trim();
-    if (!text || loading) return;
+    if (!text || loading || limitReached) return;
     setFollowUp("");
     setError("");
 
@@ -169,8 +265,10 @@ export default function AgentPageShell({
       setMessages(finalMessages);
       await persist(finalMessages);
     } catch (err) {
-      setMessages(history); // revert to before the user's message
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setMessages(history); // revert unprocessed user message
+      if (!(err instanceof Error && err.message === "LIMIT_REACHED")) {
+        setError(err instanceof Error ? err.message : "Something went wrong.");
+      }
     } finally {
       setLoading(false);
     }
@@ -213,7 +311,7 @@ export default function AgentPageShell({
           </Link>
 
           <AnimatePresence>
-            {!historyLoading && chatStarted && (
+            {!historyLoading && chatStarted && !limitReached && (
               <motion.button
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -252,27 +350,31 @@ export default function AgentPageShell({
           </div>
         )}
 
-        {/* ── Loading skeleton ── */}
+        {/* Loading skeleton */}
         {historyLoading ? (
           <FormSkeleton />
         ) : !chatStarted ? (
-          /* ── Structured form (first message / after clear) ── */
+          /* Structured form (first message / after clear) */
           <>
-            <div
-              className="rounded-[20px] p-6"
-              style={{ background: "#FFFFFF", border: "1px solid #F0F0F0", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
-            >
-              {children}
-              <GoldButton
-                onClick={handleGenerate}
-                loading={loading}
-                disabled={generateDisabled || loading}
-                size="lg"
-                className="w-full mt-5"
+            {limitReached ? (
+              <LimitCard resetIn={resetIn} />
+            ) : (
+              <div
+                className="rounded-[20px] p-6"
+                style={{ background: "#FFFFFF", border: "1px solid #F0F0F0", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
               >
-                {loading ? "Thinking…" : "Generate"}
-              </GoldButton>
-            </div>
+                {children}
+                <GoldButton
+                  onClick={handleGenerate}
+                  loading={loading}
+                  disabled={generateDisabled || loading}
+                  size="lg"
+                  className="w-full mt-5"
+                >
+                  {loading ? "Thinking…" : "Generate"}
+                </GoldButton>
+              </div>
+            )}
 
             {error && (
               <motion.div
@@ -286,7 +388,7 @@ export default function AgentPageShell({
             )}
           </>
         ) : (
-          /* ── Chat view ── */
+          /* Chat view */
           <>
             <div className="space-y-4 mb-4">
               {messages.map((msg, i) => (
@@ -366,6 +468,8 @@ export default function AgentPageShell({
                 )}
               </AnimatePresence>
 
+              {limitReached && <LimitCard resetIn={resetIn} />}
+
               <div ref={chatEndRef} />
             </div>
 
@@ -394,30 +498,37 @@ export default function AgentPageShell({
                     handleFollowUp();
                   }
                 }}
-                placeholder="Continue the conversation…"
+                placeholder={limitReached ? "Daily limit reached — resets at midnight UTC" : "Continue the conversation…"}
                 rows={3}
-                disabled={loading}
+                disabled={loading || limitReached}
                 className="input-field resize-none mb-3"
                 style={{ minHeight: 80 }}
               />
               <GoldButton
                 onClick={handleFollowUp}
                 loading={loading}
-                disabled={!followUp.trim() || loading}
+                disabled={!followUp.trim() || loading || limitReached}
                 size="lg"
                 className="w-full"
               >
                 {loading ? "Thinking…" : "Send"}
               </GoldButton>
-              <p className="text-center text-[11px] text-[#C0C0C0] mt-2">
-                Ctrl+Enter to send
-              </p>
+              {dailyCount !== null && !limitReached && dailyCount > 0 && (
+                <p className="text-center text-[11px] text-[#C0C0C0] mt-2">
+                  {dailyCount}/{DAILY_LIMIT} messages today · Ctrl+Enter to send
+                </p>
+              )}
+              {(!dailyCount || dailyCount === 0) && !limitReached && (
+                <p className="text-center text-[11px] text-[#C0C0C0] mt-2">
+                  Ctrl+Enter to send
+                </p>
+              )}
             </div>
           </>
         )}
       </div>
 
-      {/* ── Clear confirmation modal ── */}
+      {/* Clear confirmation modal */}
       <AnimatePresence>
         {showClearConfirm && (
           <motion.div

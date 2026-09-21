@@ -7,9 +7,24 @@ import { subMonths, startOfMonth } from "date-fns";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
+const DAILY_LIMIT = 50;
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
+const MAX_TOKENS: Record<AgentType, number> = {
+  marketer: 2000,       // content plans & campaign copy need room
+  copywriter: 2000,     // full text drafts
+  "hr-manager": 1000,
+  "client-manager": 1000,
+  consultant: 1000,
+  designer: 1000,
+  lawyer: 2000,         // contract templates need room
+  accountant: 1000,
+};
+
 const FORMATTING = `
+
+Be concise. Answer directly without restating the question or adding preamble. Skip unnecessary pleasantries. Get to the point in the first sentence. Keep responses focused — 2-3 short paragraphs maximum unless the user explicitly asks for more detail or a comprehensive document/report.
 
 Format your responses in plain, natural language without markdown syntax. Do NOT use asterisks for bold (**text**), hash symbols for headers (## Header), or markdown bullet dashes (- item) — use natural sentence flow or simple numbered lists with actual numbers (1. 2. 3.) instead. Write like you're talking to a colleague — clear, structured with short paragraphs, but in plain conversational text. Use line breaks between ideas instead of markdown headers. If you need emphasis, just write clearly rather than using bold formatting. Use emojis sparingly — at most 1-2 per response, only when they genuinely add clarity (e.g. a warning ⚠️ or a single relevant icon), never decoratively on every line or every bullet point.`;
 
@@ -123,7 +138,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "This agent is not available on your plan." }, { status: 403 });
     }
 
-    // 4. Build user message
+    // 4. Daily usage check
+    const today = new Date().toISOString().split("T")[0];
+    const { data: usageRow } = await supabase
+      .from("daily_usage")
+      .select("message_count")
+      .eq("user_id", user.id)
+      .eq("usage_date", today)
+      .maybeSingle();
+    const currentCount = (usageRow?.message_count as number | null) ?? 0;
+    if (currentCount >= DAILY_LIMIT) {
+      console.log("[neurooffice] Daily limit reached for user:", user.id);
+      return NextResponse.json(
+        { error: "Daily limit reached.", limitReached: true },
+        { status: 429 },
+      );
+    }
+
+    // 5. Build user message
     let userMessage = input;
 
     if (agentType === "copywriter" && additionalInput) {
@@ -136,10 +168,9 @@ export async function POST(request: NextRequest) {
       userMessage = `Task type: ${tab}\n\n${userMessage}`;
     }
 
-    // 5. Fetch financial context for all agents
+    // 6. Fetch financial context for all agents
     console.log("[neurooffice] Fetching financial context...");
     const monthStart = startOfMonth(new Date()).toISOString();
-    const monthAgo = subMonths(new Date(), 1).toISOString();
 
     const [profileRes, txRes, goalsRes, monthTxRes] = await Promise.all([
       supabase.from("profiles").select("balance, first_name, last_name, plan").eq("id", user.id).single(),
@@ -209,7 +240,7 @@ ${goalsList}
 Use this data when relevant to give personalized advice.
 ---`;
 
-    // 6. For accountant financial-report, override userMessage with structured prompt
+    // 7. For accountant financial-report, override userMessage with structured prompt
     if (agentType === "accountant" && tab === "financial-report") {
       const allTxSent = txs.filter((t) => t.sender_id === user.id);
       const allTxReceived = txs.filter((t) => t.sender_id !== user.id);
@@ -220,7 +251,7 @@ Net: £${(allTxReceived.reduce((s, t) => s + Number(t.amount), 0) - allTxSent.re
 Transaction count: ${txs.length}`;
     }
 
-    // 7. Call Anthropic with financial context prepended to system prompt
+    // 8. Call Anthropic with financial context prepended to system prompt
     const history = (conversationHistory ?? []).map((m) => ({
       role: m.role as "user" | "assistant",
       content: m.content,
@@ -228,11 +259,11 @@ Transaction count: ${txs.length}`;
 
     const systemPrompt = `${financialContext}\n\n${SYSTEM_PROMPTS[agentType]}`;
 
-    console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-5-20250929, history:", history.length);
+    console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-5-20250929, history:", history.length, "max_tokens:", MAX_TOKENS[agentType]);
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 1000,
+      max_tokens: MAX_TOKENS[agentType],
       system: systemPrompt,
       messages: [...history, { role: "user", content: userMessage }],
     });
@@ -240,7 +271,15 @@ Transaction count: ${txs.length}`;
     console.log("[neurooffice] Anthropic response received, stop_reason:", response.stop_reason);
 
     const result = response.content[0]?.type === "text" ? response.content[0].text : "";
-    return NextResponse.json({ result });
+
+    // Increment usage counter (non-critical — fire and forget)
+    const newCount = currentCount + 1;
+    void supabase.from("daily_usage").upsert(
+      { user_id: user.id, usage_date: today, message_count: newCount },
+      { onConflict: "user_id,usage_date" },
+    );
+
+    return NextResponse.json({ result, messagesUsed: newCount });
 
   } catch (error: unknown) {
     const err = error as Error & { status?: number; error?: { message?: string } };
