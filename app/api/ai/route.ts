@@ -79,7 +79,9 @@ ${recentTxStr || "None"}
 Savings goals: ${goalsStr}
 
 Keep responses concise (max 3 short paragraphs). Be encouraging and actionable.
-Never advise on external investments. Only discuss Y-tech services and the user's data.`;
+Never advise on external investments. Only discuss Y-tech services and the user's data.
+
+Format your responses in plain, natural language without markdown syntax. Do NOT use asterisks for bold (**text**), hash symbols for headers (## Header), or markdown bullet dashes (- item) — use natural sentence flow or simple numbered lists with actual numbers (1. 2. 3.) instead. Write like you're talking to a colleague — clear, structured with short paragraphs, but in plain conversational text. Use line breaks between ideas instead of markdown headers. If you need emphasis, just write clearly rather than using bold formatting. Use emojis sparingly — at most 1-2 per response, only when they genuinely add clarity (e.g. a warning ⚠️ or a single relevant icon), never decoratively on every line or every bullet point.`;
 
   const history: Anthropic.Messages.MessageParam[] = (conversationHistory ?? []).map((h) => ({
     role: h.role,
