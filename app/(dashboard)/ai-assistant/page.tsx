@@ -7,14 +7,13 @@ import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
 import { createClient } from "@/lib/supabase/client";
+import { useDailyUsage, DAILY_LIMIT } from "@/contexts/DailyUsageContext";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
 }
-
-const DAILY_LIMIT = 50;
 
 const SUGGESTED = [
   "How am I spending this month?",
@@ -109,14 +108,13 @@ function LimitCard({ resetIn }: { resetIn: string }) {
 }
 
 export default function AIAssistantPage() {
+  const { limitReached, resetIn, reportUsed } = useDailyUsage();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [dailyCount, setDailyCount] = useState<number | null>(null);
-  const [limitReached, setLimitReached] = useState(false);
-  const [resetIn, setResetIn] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -124,27 +122,11 @@ export default function AIAssistantPage() {
   const userIdRef = useRef("");
   const convIdRef = useRef("");
 
-  // Compute countdown string
-  useEffect(() => {
-    function compute() {
-      const midnight = new Date();
-      midnight.setUTCHours(24, 0, 0, 0);
-      const diff = midnight.getTime() - Date.now();
-      const h = Math.floor(diff / 3_600_000);
-      const m = Math.floor((diff % 3_600_000) / 60_000);
-      setResetIn(`${h}h ${m}m`);
-    }
-    compute();
-    const id = setInterval(compute, 60_000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, limitReached]);
 
-  // Load persisted conversation and daily count on mount
+  // Load persisted conversation on mount
   useEffect(() => {
     async function init() {
       try {
@@ -152,43 +134,29 @@ export default function AIAssistantPage() {
         if (!user) return;
         userIdRef.current = user.id;
 
-        const today = new Date().toISOString().split("T")[0];
-        const [convResult, usageResult] = await Promise.all([
-          (async () => {
-            const storageKey = `ai_conv_${user.id}`;
-            let id = localStorage.getItem(storageKey);
-            if (id) {
-              const { data } = await supabase.current
-                .from("ai_conversations")
-                .select("messages")
-                .eq("id", id)
-                .eq("user_id", user.id)
-                .maybeSingle();
-              if (data?.messages && (data.messages as Message[]).length > 0) {
-                setMessages(data.messages as Message[]);
-              } else if (!data) {
-                id = crypto.randomUUID();
-                localStorage.setItem(storageKey, id);
-              }
-            } else {
-              id = crypto.randomUUID();
-              localStorage.setItem(storageKey, id);
-            }
-            return id;
-          })(),
-          supabase.current
-            .from("daily_usage")
-            .select("message_count")
+        const storageKey = `ai_conv_${user.id}`;
+        let id = localStorage.getItem(storageKey);
+
+        if (id) {
+          const { data } = await supabase.current
+            .from("ai_conversations")
+            .select("messages")
+            .eq("id", id)
             .eq("user_id", user.id)
-            .eq("usage_date", today)
-            .maybeSingle(),
-        ]);
+            .maybeSingle();
 
-        convIdRef.current = convResult as string;
+          if (data?.messages && (data.messages as Message[]).length > 0) {
+            setMessages(data.messages as Message[]);
+          } else if (!data) {
+            id = crypto.randomUUID();
+            localStorage.setItem(storageKey, id);
+          }
+        } else {
+          id = crypto.randomUUID();
+          localStorage.setItem(storageKey, id);
+        }
 
-        const count = (usageResult.data?.message_count as number | null) ?? 0;
-        setDailyCount(count);
-        if (count >= DAILY_LIMIT) setLimitReached(true);
+        convIdRef.current = id;
       } catch {
         // Gracefully fall through to empty state
       } finally {
@@ -229,17 +197,14 @@ export default function AIAssistantPage() {
       });
 
       if (res.status === 429) {
-        setLimitReached(true);
-        setDailyCount(DAILY_LIMIT);
+        reportUsed(DAILY_LIMIT);
         setMessages(newMessages); // keep the user message visible
         return;
       }
 
       const data = await res.json() as { reply?: string; error?: string; messagesUsed?: number };
-      if (data.messagesUsed !== undefined) {
-        setDailyCount(data.messagesUsed);
-        if (data.messagesUsed >= DAILY_LIMIT) setLimitReached(true);
-      }
+      if (data.messagesUsed !== undefined) reportUsed(data.messagesUsed);
+
       if (data.reply) {
         const assistantMsg: Message = {
           role: "assistant",
@@ -421,31 +386,24 @@ export default function AIAssistantPage() {
             paddingBottom: "max(16px, env(safe-area-inset-bottom))",
           }}
         >
-          <div className="flex flex-col gap-1.5 max-w-3xl mx-auto">
-            <div className="flex gap-3">
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
-                placeholder={limitReached ? "Daily limit reached — resets at midnight UTC" : "Ask about your finances…"}
-                className="input-field flex-1"
-                disabled={inputDisabled}
-              />
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => sendMessage(input)}
-                disabled={!input.trim() || inputDisabled}
-                className="w-11 h-11 rounded-2xl gold-gradient text-white flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-              >
-                <Send className="w-4 h-4" />
-              </motion.button>
-            </div>
-            {dailyCount !== null && !limitReached && dailyCount > 0 && (
-              <p className="text-right text-[11px] text-[#C0C0C0] pr-14">
-                {dailyCount}/{DAILY_LIMIT} messages today
-              </p>
-            )}
+          <div className="flex gap-3 max-w-3xl mx-auto">
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
+              placeholder={limitReached ? "Daily limit reached — resets at midnight UTC" : "Ask about your finances…"}
+              className="input-field flex-1"
+              disabled={inputDisabled}
+            />
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || inputDisabled}
+              className="w-11 h-11 rounded-2xl gold-gradient text-white flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </motion.button>
           </div>
         </div>
       </div>

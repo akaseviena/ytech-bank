@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { getInitials } from "@/lib/utils";
 import type { Profile, Notification } from "@/types";
 import NotificationDropdown from "@/components/ui/NotificationDropdown";
+import UsageBadge from "@/components/ui/UsageBadge";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -89,6 +90,8 @@ export default function Sidebar({ profile, notifications }: SidebarProps) {
 
       {/* Bottom */}
       <div className="p-4 space-y-2" style={{ borderTop: "1px solid #F5F5F5" }}>
+        {/* AI usage counter */}
+        <UsageBadge variant="sidebar" />
         {/* Notifications */}
         <NotificationDropdown
           notifications={notifications}

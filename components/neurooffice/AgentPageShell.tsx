@@ -7,11 +7,10 @@ import Link from "next/link";
 import GoldButton from "@/components/ui/GoldButton";
 import PageTransition from "@/components/ui/PageTransition";
 import { createClient } from "@/lib/supabase/client";
+import { useDailyUsage, DAILY_LIMIT } from "@/contexts/DailyUsageContext";
 import type { AgentType } from "@/types";
 
 type Message = { role: "user" | "assistant"; content: string };
-
-const DAILY_LIMIT = 50;
 
 interface AgentPageShellProps {
   agentType: AgentType;
@@ -100,6 +99,8 @@ export default function AgentPageShell({
   disclaimer,
   children,
 }: AgentPageShellProps) {
+  const { limitReached, resetIn, reportUsed } = useDailyUsage();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [followUp, setFollowUp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -107,9 +108,6 @@ export default function AgentPageShell({
   const [error, setError] = useState("");
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [dailyCount, setDailyCount] = useState<number | null>(null);
-  const [limitReached, setLimitReached] = useState(false);
-  const [resetIn, setResetIn] = useState("");
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const supabase = useRef(createClient());
@@ -117,28 +115,13 @@ export default function AgentPageShell({
 
   const chatStarted = messages.length > 0;
 
-  // Compute countdown string, update every minute
-  useEffect(() => {
-    function compute() {
-      const midnight = new Date();
-      midnight.setUTCHours(24, 0, 0, 0);
-      const diff = midnight.getTime() - Date.now();
-      const h = Math.floor(diff / 3_600_000);
-      const m = Math.floor((diff % 3_600_000) / 60_000);
-      setResetIn(`${h}h ${m}m`);
-    }
-    compute();
-    const id = setInterval(compute, 60_000);
-    return () => clearInterval(id);
-  }, []);
-
   useEffect(() => {
     if (chatStarted) {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, loading, chatStarted, limitReached]);
 
-  // Load persisted conversation and daily count on mount
+  // Load persisted conversation on mount
   useEffect(() => {
     async function init() {
       try {
@@ -146,33 +129,20 @@ export default function AgentPageShell({
         if (!user) return;
         userIdRef.current = user.id;
 
-        const today = new Date().toISOString().split("T")[0];
-        const [convResult, usageResult] = await Promise.all([
-          supabase.current
-            .from("neurooffice_conversations")
-            .select("messages")
-            .eq("user_id", user.id)
-            .eq("agent_type", agentType)
-            .maybeSingle(),
-          supabase.current
-            .from("daily_usage")
-            .select("message_count")
-            .eq("user_id", user.id)
-            .eq("usage_date", today)
-            .maybeSingle(),
-        ]);
+        const { data } = await supabase.current
+          .from("neurooffice_conversations")
+          .select("messages")
+          .eq("user_id", user.id)
+          .eq("agent_type", agentType)
+          .maybeSingle();
 
-        if (convResult.data?.messages && Array.isArray(convResult.data.messages) && (convResult.data.messages as unknown[]).length > 0) {
-          const loaded = (convResult.data.messages as { role: string; content: string }[]).map((m) => ({
+        if (data?.messages && Array.isArray(data.messages) && (data.messages as unknown[]).length > 0) {
+          const loaded = (data.messages as { role: string; content: string }[]).map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
           }));
           setMessages(loaded);
         }
-
-        const count = (usageResult.data?.message_count as number | null) ?? 0;
-        setDailyCount(count);
-        if (count >= DAILY_LIMIT) setLimitReached(true);
       } catch {
         // Gracefully fall through to empty state
       } finally {
@@ -203,19 +173,20 @@ export default function AgentPageShell({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ agentType, ...payload, conversationHistory: history }),
     });
-    const data = await res.json() as { result?: string; error?: string; messagesUsed?: number; limitReached?: boolean };
+    const data = await res.json() as {
+      result?: string;
+      error?: string;
+      messagesUsed?: number;
+      limitReached?: boolean;
+    };
 
     if (res.status === 429) {
-      setLimitReached(true);
-      setDailyCount(DAILY_LIMIT);
+      reportUsed(DAILY_LIMIT); // update global context
       throw new Error("LIMIT_REACHED");
     }
     if (!res.ok) throw new Error(data.error ?? "Generation failed");
 
-    if (data.messagesUsed !== undefined) {
-      setDailyCount(data.messagesUsed);
-      if (data.messagesUsed >= DAILY_LIMIT) setLimitReached(true);
-    }
+    if (data.messagesUsed !== undefined) reportUsed(data.messagesUsed);
     return data.result ?? "";
   }
 
@@ -326,7 +297,7 @@ export default function AgentPageShell({
           </AnimatePresence>
         </div>
 
-        {/* Header */}
+        {/* Agent header */}
         <div className="flex items-center gap-4 mb-6">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
@@ -513,16 +484,9 @@ export default function AgentPageShell({
               >
                 {loading ? "Thinking…" : "Send"}
               </GoldButton>
-              {dailyCount !== null && !limitReached && dailyCount > 0 && (
-                <p className="text-center text-[11px] text-[#C0C0C0] mt-2">
-                  {dailyCount}/{DAILY_LIMIT} messages today · Ctrl+Enter to send
-                </p>
-              )}
-              {(!dailyCount || dailyCount === 0) && !limitReached && (
-                <p className="text-center text-[11px] text-[#C0C0C0] mt-2">
-                  Ctrl+Enter to send
-                </p>
-              )}
+              <p className="text-center text-[11px] text-[#C0C0C0] mt-2">
+                Ctrl+Enter to send
+              </p>
             </div>
           </>
         )}

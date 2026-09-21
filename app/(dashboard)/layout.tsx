@@ -4,6 +4,8 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import { ToastProvider } from "@/components/ui/Toast";
 import FeedbackButton from "@/components/ui/FeedbackButton";
+import UsageBadge from "@/components/ui/UsageBadge";
+import { DailyUsageProvider } from "@/contexts/DailyUsageContext";
 import type { Profile, Notification } from "@/types";
 
 export default async function DashboardLayout({
@@ -33,20 +35,24 @@ export default async function DashboardLayout({
 
   return (
     <ToastProvider>
-      <div className="page-bg min-h-screen">
-        <Sidebar
-          profile={profile as Profile}
-          notifications={(notifications ?? []) as Notification[]}
-        />
-        <main className="lg:pl-60 pb-20 lg:pb-0 min-h-screen">
-          {children}
-        </main>
-        <BottomNav
-          notifications={(notifications ?? []) as Notification[]}
-          userId={user.id}
-        />
-        <FeedbackButton userEmail={user.email} />
-      </div>
+      <DailyUsageProvider userId={user.id}>
+        <div className="page-bg min-h-screen">
+          <Sidebar
+            profile={profile as Profile}
+            notifications={(notifications ?? []) as Notification[]}
+          />
+          <main className="lg:pl-60 pb-20 lg:pb-0 min-h-screen">
+            {children}
+          </main>
+          <BottomNav
+            notifications={(notifications ?? []) as Notification[]}
+            userId={user.id}
+          />
+          <FeedbackButton userEmail={user.email} />
+          {/* Mobile-only fixed counter pill — desktop version lives in the Sidebar */}
+          <UsageBadge variant="mobile-fixed" />
+        </div>
+      </DailyUsageProvider>
     </ToastProvider>
   );
 }
