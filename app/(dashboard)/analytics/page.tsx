@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  PieChart, Pie, Cell, Tooltip, Legend,
+  PieChart, Pie, Cell, Tooltip,
   LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area, AreaChart
 } from "recharts";
 import { subDays, subMonths, subYears, format, startOfDay, eachDayOfInterval } from "date-fns";
@@ -23,7 +23,6 @@ const PERIOD_LABELS: Record<Period, string> = {
   year: "Year",
 };
 
-const GOLD_PALETTE = ["#FFD700", "#F5A623", "#C8860A", "#E8B84B", "#A0710A", "#FDE68A", "#D97706", "#92400E", "#FBBF24"];
 
 function getStartDate(period: Period): Date {
   const now = new Date();
@@ -86,6 +85,7 @@ export default function AnalyticsPage() {
       name: CATEGORY_INFO[cat as TransactionCategory]?.label ?? cat,
       value: Number(value.toFixed(2)),
       emoji: CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? "💳",
+      color: CATEGORY_INFO[cat as TransactionCategory]?.color ?? "#9B9B9B",
     }))
     .sort((a, b) => b.value - a.value);
 
@@ -173,17 +173,35 @@ export default function AnalyticsPage() {
                 {categoryData.length === 0 ? (
                   <p className="text-center text-[#9B9B9B] font-inter text-sm py-8">No spending data</p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie data={categoryData} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value">
-                        {categoryData.map((_, i) => (
-                          <Cell key={i} fill={GOLD_PALETTE[i % GOLD_PALETTE.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                      <Legend formatter={(v) => <span className="text-xs font-inter text-[#6B6B6B]">{v}</span>} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={65}
+                          paddingAngle={3}
+                          dataKey="value"
+                          cornerRadius={6}
+                        >
+                          {categoryData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4">
+                      {categoryData.map((entry, i) => (
+                        <div key={i} className="flex items-center gap-1.5 min-w-0">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: entry.color }} />
+                          <span className="text-xs font-inter text-[#6B6B6B] truncate">{entry.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </GlassCard>
 

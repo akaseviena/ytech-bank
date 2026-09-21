@@ -206,13 +206,13 @@ export const CATEGORY_INFO: Record<
   TransactionCategory,
   { emoji: string; label: string; color: string }
 > = {
-  food: { emoji: "🍔", label: "Food & Dining", color: "#FF6B6B" },
-  transport: { emoji: "🚗", label: "Transport", color: "#4ECDC4" },
-  entertainment: { emoji: "🎬", label: "Entertainment", color: "#A78BFA" },
-  shopping: { emoji: "🛍️", label: "Shopping", color: "#F59E0B" },
-  health: { emoji: "💊", label: "Health", color: "#34C759" },
-  education: { emoji: "📚", label: "Education", color: "#3B82F6" },
-  travel: { emoji: "✈️", label: "Travel", color: "#06B6D4" },
-  business: { emoji: "💼", label: "Business", color: "#8B5CF6" },
-  other: { emoji: "💳", label: "Other", color: "#6B7280" },
+  food:          { emoji: "🍔", label: "Food & Dining", color: "#FFD60A" },
+  transport:     { emoji: "🚗", label: "Transport",     color: "#0A84FF" },
+  entertainment: { emoji: "🎬", label: "Entertainment", color: "#FF375F" },
+  shopping:      { emoji: "🛍️", label: "Shopping",      color: "#30D158" },
+  health:        { emoji: "💊", label: "Health",         color: "#FF2D55" },
+  education:     { emoji: "📚", label: "Education",      color: "#64D2FF" },
+  travel:        { emoji: "✈️", label: "Travel",          color: "#5E5CE6" },
+  business:      { emoji: "💼", label: "Business",       color: "#BF5AF2" },
+  other:         { emoji: "💳", label: "Other",           color: "#FF9F0A" },
 };
