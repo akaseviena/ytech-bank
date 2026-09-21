@@ -6,6 +6,7 @@ import { Send, Sparkles, Plus, X } from "lucide-react";
 import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
+import { createClient } from "@/lib/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -36,23 +37,113 @@ function TypingIndicator() {
   );
 }
 
+function HistorySkeleton() {
+  return (
+    <div className="space-y-4 py-8 px-2" aria-hidden="true">
+      <div className="flex justify-end">
+        <div className="w-48 h-10 rounded-3xl bg-[#F0F0F0] animate-pulse" />
+      </div>
+      <div className="flex justify-start gap-2 items-end">
+        <div className="w-8 h-8 rounded-2xl bg-[#F0F0F0] animate-pulse flex-shrink-0" />
+        <div className="w-64 h-16 rounded-3xl bg-[#F0F0F0] animate-pulse" />
+      </div>
+      <div className="flex justify-end">
+        <div className="w-36 h-10 rounded-3xl bg-[#F0F0F0] animate-pulse" />
+      </div>
+      <div className="flex justify-start gap-2 items-end">
+        <div className="w-8 h-8 rounded-2xl bg-[#F0F0F0] animate-pulse flex-shrink-0" />
+        <div className="w-56 h-20 rounded-3xl bg-[#F0F0F0] animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
 export default function AIAssistantPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Stable supabase client and conversation identifiers — stored in refs
+  // to avoid re-renders during background saves.
+  const supabase = useRef(createClient());
+  const userIdRef = useRef("");
+  const convIdRef = useRef("");
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // Load persisted conversation on mount
+  useEffect(() => {
+    async function init() {
+      try {
+        const { data: { user } } = await supabase.current.auth.getUser();
+        if (!user) return;
+        userIdRef.current = user.id;
+
+        // One conversation per user per browser, keyed by a UUID stored in localStorage.
+        // This lets the web assistant maintain one persistent thread without interfering
+        // with the mobile app's multi-conversation rows in the same table.
+        const storageKey = `ai_conv_${user.id}`;
+        let id = localStorage.getItem(storageKey);
+
+        if (id) {
+          const { data } = await supabase.current
+            .from("ai_conversations")
+            .select("messages")
+            .eq("id", id)
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (data?.messages && (data.messages as Message[]).length > 0) {
+            setMessages(data.messages as Message[]);
+          } else if (!data) {
+            // Row was deleted externally — generate a fresh ID
+            id = crypto.randomUUID();
+            localStorage.setItem(storageKey, id);
+          }
+        } else {
+          id = crypto.randomUUID();
+          localStorage.setItem(storageKey, id);
+        }
+
+        convIdRef.current = id;
+      } catch {
+        // Gracefully fall through to empty state (e.g. RLS not yet applied)
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+    init();
+  }, []);
+
+  async function persist(msgs: Message[]) {
+    if (!userIdRef.current || !convIdRef.current) return;
+    try {
+      await supabase.current.from("ai_conversations").upsert({
+        id: convIdRef.current,
+        user_id: userIdRef.current,
+        messages: msgs,
+        updated_at: new Date().toISOString(),
+      });
+    } catch { /* non-critical — UI is already updated */ }
+  }
+
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
+
     const userMsg: Message = { role: "user", content: text, timestamp: new Date().toISOString() };
+    // Build history before adding the new user message — the API receives history
+    // as the prior context and appends the new message itself.
     const conversationHistory = messages.map((m) => ({ role: m.role, content: m.content }));
-    setMessages((prev) => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+
+    setMessages(newMessages);
     setInput("");
     setLoading(true);
 
@@ -64,10 +155,14 @@ export default function AIAssistantPage() {
       });
       const data = await res.json() as { reply?: string; error?: string };
       if (data.reply) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: data.reply!, timestamp: new Date().toISOString() },
-        ]);
+        const assistantMsg: Message = {
+          role: "assistant",
+          content: data.reply,
+          timestamp: new Date().toISOString(),
+        };
+        const finalMessages = [...newMessages, assistantMsg];
+        setMessages(finalMessages);
+        await persist(finalMessages);
       }
     } catch {
       // silently ignore network errors
@@ -76,7 +171,20 @@ export default function AIAssistantPage() {
     }
   }
 
-  function handleClear() {
+  async function handleClear() {
+    if (userIdRef.current && convIdRef.current) {
+      try {
+        await supabase.current
+          .from("ai_conversations")
+          .delete()
+          .eq("id", convIdRef.current)
+          .eq("user_id", userIdRef.current);
+      } catch { /* ignore */ }
+      // Give this browser session a fresh conversation slot
+      const newId = crypto.randomUUID();
+      localStorage.setItem(`ai_conv_${userIdRef.current}`, newId);
+      convIdRef.current = newId;
+    }
     setMessages([]);
     setInput("");
     setShowClearConfirm(false);
@@ -86,7 +194,10 @@ export default function AIAssistantPage() {
     <PageTransition>
       <div className="flex flex-col h-[calc(100vh-0px)] lg:h-screen">
         {/* Header */}
-        <div className="px-6 py-4 flex items-center gap-3" style={{ background: "#FFFFFF", borderBottom: "1px solid #F0F0F0" }}>
+        <div
+          className="px-6 py-4 flex items-center gap-3"
+          style={{ background: "#FFFFFF", borderBottom: "1px solid #F0F0F0" }}
+        >
           <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] flex-shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
@@ -95,7 +206,7 @@ export default function AIAssistantPage() {
             <p className="text-xs text-[#6B6B6B]">Powered by Claude · Your personal finance advisor</p>
           </div>
           <AnimatePresence>
-            {messages.length > 0 && (
+            {!historyLoading && messages.length > 0 && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -112,70 +223,93 @@ export default function AIAssistantPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.length === 0 && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-8">
-              <div className="text-5xl mb-4">🤖</div>
-              <h3 className="font-bold text-xl text-[#1A1A1A] mb-2">Hello! I&apos;m your AI advisor</h3>
-              <p className="text-sm text-[#6B6B6B] mb-8">Ask me anything about your finances.</p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                {SUGGESTED.map((s) => (
-                  <motion.button
-                    key={s}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => sendMessage(s)}
-                    className="px-4 py-2 rounded-2xl border border-[rgba(245,166,35,0.2)] text-sm text-[#6B6B6B] hover:text-[#F5A623] hover:border-[rgba(245,166,35,0.5)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.08)] transition-all bg-white"
-                  >
-                    {s}
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
+          {historyLoading ? (
+            <HistorySkeleton />
+          ) : (
+            <>
+              {messages.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center py-8"
+                >
+                  <div className="text-5xl mb-4">🤖</div>
+                  <h3 className="font-bold text-xl text-[#1A1A1A] mb-2">Hello! I&apos;m your AI advisor</h3>
+                  <p className="text-sm text-[#6B6B6B] mb-8">Ask me anything about your finances.</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {SUGGESTED.map((s) => (
+                      <motion.button
+                        key={s}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => sendMessage(s)}
+                        className="px-4 py-2 rounded-2xl border border-[rgba(245,166,35,0.2)] text-sm text-[#6B6B6B] hover:text-[#F5A623] hover:border-[rgba(245,166,35,0.5)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.08)] transition-all bg-white"
+                      >
+                        {s}
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
 
-          <AnimatePresence initial={false}>
-            {messages.map((msg, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {msg.role === "assistant" && (
-                  <div className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end" style={{ background: "#FFFFFF", border: "2px solid rgba(245,166,35,0.5)", boxShadow: "0 0 8px rgba(245,166,35,0.3)" }}>
+              <AnimatePresence initial={false}>
+                {messages.map((msg, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    {msg.role === "assistant" && (
+                      <div
+                        className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end"
+                        style={{
+                          background: "#FFFFFF",
+                          border: "2px solid rgba(245,166,35,0.5)",
+                          boxShadow: "0 0 8px rgba(245,166,35,0.3)",
+                        }}
+                      >
+                        <img src="/logo.PNG" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[75%] rounded-3xl px-4 py-3 text-sm font-inter leading-relaxed ${
+                        msg.role === "user"
+                          ? "gold-gradient text-white rounded-br-md"
+                          : "glass-card text-[#1A1A1A] rounded-bl-md"
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {loading && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
+                  <div
+                    className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end"
+                    style={{
+                      background: "#FFFFFF",
+                      border: "2px solid rgba(245,166,35,0.5)",
+                      boxShadow: "0 0 8px rgba(245,166,35,0.3)",
+                    }}
+                  >
                     <img src="/logo.PNG" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
                   </div>
-                )}
-                <div
-                  className={`max-w-[75%] rounded-3xl px-4 py-3 text-sm font-inter leading-relaxed ${
-                    msg.role === "user"
-                      ? "gold-gradient text-white rounded-br-md"
-                      : "glass-card text-[#1A1A1A] rounded-bl-md"
-                  }`}
-                  style={msg.role === "user" ? {} : {}}
-                >
-                  {msg.content}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                  <GlassCard className="rounded-bl-md">
+                    <TypingIndicator />
+                  </GlassCard>
+                </motion.div>
+              )}
 
-          {loading && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-              <div className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end" style={{ background: "#FFFFFF", border: "2px solid rgba(245,166,35,0.5)", boxShadow: "0 0 8px rgba(245,166,35,0.3)" }}>
-                <img src="/logo.PNG" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
-              </div>
-              <GlassCard className="rounded-bl-md">
-                <TypingIndicator />
-              </GlassCard>
-            </motion.div>
+              <div ref={bottomRef} />
+            </>
           )}
-
-          <div ref={bottomRef} />
         </div>
 
-        {/* Suggested chips when there are messages */}
-        {messages.length > 0 && messages.length < 4 && (
+        {/* Suggested chips when conversation is short */}
+        {!historyLoading && messages.length > 0 && messages.length < 4 && (
           <div className="px-6 pb-3 flex gap-2 overflow-x-auto">
             {SUGGESTED.map((s) => (
               <button
@@ -190,7 +324,15 @@ export default function AIAssistantPage() {
         )}
 
         {/* Input */}
-        <div className="px-4 py-4" style={{ background: "#FFFFFF", borderTop: "1px solid #F0F0F0", borderRadius: 0, paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
+        <div
+          className="px-4 py-4"
+          style={{
+            background: "#FFFFFF",
+            borderTop: "1px solid #F0F0F0",
+            borderRadius: 0,
+            paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+          }}
+        >
           <div className="flex gap-3 max-w-3xl mx-auto">
             <input
               ref={inputRef}
@@ -199,12 +341,12 @@ export default function AIAssistantPage() {
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
               placeholder="Ask about your finances…"
               className="input-field flex-1"
-              disabled={loading}
+              disabled={loading || historyLoading}
             />
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => sendMessage(input)}
-              disabled={!input.trim() || loading}
+              disabled={!input.trim() || loading || historyLoading}
               className="w-11 h-11 rounded-2xl gold-gradient text-white flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
             >
               <Send className="w-4 h-4" />
@@ -222,7 +364,11 @@ export default function AIAssistantPage() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(180,180,200,0.2)", backdropFilter: "blur(12px) saturate(150%)", WebkitBackdropFilter: "blur(12px) saturate(150%)" }}
+            style={{
+              background: "rgba(180,180,200,0.2)",
+              backdropFilter: "blur(12px) saturate(150%)",
+              WebkitBackdropFilter: "blur(12px) saturate(150%)",
+            }}
             onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}
           >
             <motion.div
@@ -248,11 +394,14 @@ export default function AIAssistantPage() {
                 <X className="w-4 h-4" />
               </button>
               <div className="text-center mb-5">
-                <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl" style={{ background: "rgba(245,166,35,0.1)" }}>
+                <div
+                  className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl"
+                  style={{ background: "rgba(245,166,35,0.1)" }}
+                >
                   ✨
                 </div>
                 <h4 className="font-bold text-lg text-[#1A1A1A] mb-1">Start new conversation?</h4>
-                <p className="text-sm text-[#6B6B6B]">Current conversation will be cleared.</p>
+                <p className="text-sm text-[#6B6B6B]">Conversation history will be permanently deleted.</p>
               </div>
               <div className="flex gap-3">
                 <button

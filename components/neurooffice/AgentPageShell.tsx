@@ -6,6 +6,7 @@ import { ArrowLeft, Copy, Check, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
 import GoldButton from "@/components/ui/GoldButton";
 import PageTransition from "@/components/ui/PageTransition";
+import { createClient } from "@/lib/supabase/client";
 import type { AgentType } from "@/types";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -21,6 +22,24 @@ interface AgentPageShellProps {
   children: React.ReactNode;
 }
 
+function FormSkeleton() {
+  return (
+    <div
+      className="rounded-[20px] p-6 space-y-4"
+      style={{
+        background: "#FFFFFF",
+        border: "1px solid #F0F0F0",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+      }}
+      aria-hidden="true"
+    >
+      <div className="h-4 w-1/3 bg-[#F0F0F0] rounded-xl animate-pulse" />
+      <div className="h-28 bg-[#F0F0F0] rounded-2xl animate-pulse" />
+      <div className="h-12 bg-[#F0F0F0] rounded-2xl animate-pulse" />
+    </div>
+  );
+}
+
 export default function AgentPageShell({
   agentType,
   emoji,
@@ -34,10 +53,15 @@ export default function AgentPageShell({
   const [messages, setMessages] = useState<Message[]>([]);
   const [followUp, setFollowUp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState("");
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const supabase = useRef(createClient());
+  const userIdRef = useRef("");
+
   const chatStarted = messages.length > 0;
 
   useEffect(() => {
@@ -45,6 +69,52 @@ export default function AgentPageShell({
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, loading, chatStarted]);
+
+  // Load persisted conversation for this agent on mount
+  useEffect(() => {
+    async function init() {
+      try {
+        const { data: { user } } = await supabase.current.auth.getUser();
+        if (!user) return;
+        userIdRef.current = user.id;
+
+        const { data } = await supabase.current
+          .from("neurooffice_conversations")
+          .select("messages")
+          .eq("user_id", user.id)
+          .eq("agent_type", agentType)
+          .maybeSingle();
+
+        if (data?.messages && Array.isArray(data.messages) && (data.messages as unknown[]).length > 0) {
+          const loaded = (data.messages as { role: string; content: string }[]).map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          }));
+          setMessages(loaded);
+        }
+      } catch {
+        // Gracefully fall through to empty state (e.g. table not yet created)
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+    init();
+  }, [agentType]);
+
+  async function persist(msgs: Message[]) {
+    if (!userIdRef.current) return;
+    try {
+      await supabase.current.from("neurooffice_conversations").upsert(
+        {
+          user_id: userIdRef.current,
+          agent_type: agentType,
+          messages: msgs,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,agent_type" },
+      );
+    } catch { /* non-critical — UI is already updated */ }
+  }
 
   async function sendToApi(payload: Record<string, unknown>, history: Message[]) {
     const res = await fetch("/api/neurooffice", {
@@ -69,7 +139,10 @@ export default function AgentPageShell({
 
     try {
       const result = await sendToApi(payload, []);
-      setMessages([userMsg, { role: "assistant", content: result }]);
+      const assistantMsg: Message = { role: "assistant", content: result };
+      const newMessages = [userMsg, assistantMsg];
+      setMessages(newMessages);
+      await persist(newMessages);
     } catch (err) {
       setMessages([]);
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -86,14 +159,17 @@ export default function AgentPageShell({
 
     const history = messages;
     const userMsg: Message = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
+    const messagesWithUser = [...history, userMsg];
+    setMessages(messagesWithUser);
     setLoading(true);
 
     try {
       const result = await sendToApi({ input: text }, history);
-      setMessages((prev) => [...prev, { role: "assistant", content: result }]);
+      const finalMessages: Message[] = [...messagesWithUser, { role: "assistant" as const, content: result }];
+      setMessages(finalMessages);
+      await persist(finalMessages);
     } catch (err) {
-      setMessages((prev) => prev.slice(0, -1));
+      setMessages(history); // revert to before the user's message
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
@@ -106,7 +182,16 @@ export default function AgentPageShell({
     setTimeout(() => setCopiedIdx(null), 2000);
   }
 
-  function handleClear() {
+  async function handleClear() {
+    if (userIdRef.current) {
+      try {
+        await supabase.current
+          .from("neurooffice_conversations")
+          .delete()
+          .eq("user_id", userIdRef.current)
+          .eq("agent_type", agentType);
+      } catch { /* ignore */ }
+    }
     setMessages([]);
     setFollowUp("");
     setError("");
@@ -128,7 +213,7 @@ export default function AgentPageShell({
           </Link>
 
           <AnimatePresence>
-            {chatStarted && (
+            {!historyLoading && chatStarted && (
               <motion.button
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -167,8 +252,11 @@ export default function AgentPageShell({
           </div>
         )}
 
-        {!chatStarted ? (
-          /* ── Structured form (first message) ── */
+        {/* ── Loading skeleton ── */}
+        {historyLoading ? (
+          <FormSkeleton />
+        ) : !chatStarted ? (
+          /* ── Structured form (first message / after clear) ── */
           <>
             <div
               className="rounded-[20px] p-6"
@@ -255,7 +343,6 @@ export default function AgentPageShell({
                 </motion.div>
               ))}
 
-              {/* Typing indicator */}
               <AnimatePresence>
                 {loading && (
                   <motion.div
@@ -282,7 +369,6 @@ export default function AgentPageShell({
               <div ref={chatEndRef} />
             </div>
 
-            {/* Error */}
             {error && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -340,7 +426,11 @@ export default function AgentPageShell({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(180,180,200,0.2)", backdropFilter: "blur(12px) saturate(150%)", WebkitBackdropFilter: "blur(12px) saturate(150%)" }}
+            style={{
+              background: "rgba(180,180,200,0.2)",
+              backdropFilter: "blur(12px) saturate(150%)",
+              WebkitBackdropFilter: "blur(12px) saturate(150%)",
+            }}
             onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}
           >
             <motion.div
@@ -367,7 +457,7 @@ export default function AgentPageShell({
                   ✨
                 </div>
                 <h4 className="font-bold text-lg text-[#1A1A1A] mb-1">Start new conversation?</h4>
-                <p className="text-sm text-[#6B6B6B]">Current conversation will be cleared.</p>
+                <p className="text-sm text-[#6B6B6B]">Conversation history will be permanently deleted.</p>
               </div>
               <div className="flex gap-3">
                 <button
