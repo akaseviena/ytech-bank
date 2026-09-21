@@ -117,12 +117,13 @@ Format your responses in plain, natural language without markdown syntax. Do NOT
 
   const reply = response.content[0].type === "text" ? response.content[0].text : "";
 
-  // Increment usage counter (non-critical — fire and forget)
-  const newCount = currentCount + 1;
-  void supabase.from("daily_usage").upsert(
-    { user_id: user.id, usage_date: today, message_count: newCount },
-    { onConflict: "user_id,usage_date" },
-  );
+  // Atomic increment — awaited so the write commits before the response returns.
+  // Uses a SQL function: ON CONFLICT DO UPDATE SET message_count = message_count + 1
+  const { data: rpcResult } = await supabase.rpc("increment_daily_usage", {
+    p_user_id: user.id,
+    p_date: today,
+  });
+  const newCount = (rpcResult as number | null) ?? currentCount + 1;
 
   return NextResponse.json({ reply, messagesUsed: newCount });
 }
