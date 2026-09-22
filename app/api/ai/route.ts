@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
-import { subMonths } from "date-fns";
+import { subMonths, startOfMonth } from "date-fns";
 import { CATEGORY_INFO, type TransactionCategory } from "@/types";
 
 export const maxDuration = 60;
@@ -12,6 +12,35 @@ const DAILY_LIMIT = 50;
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
+
+// ── Aggregation helpers ──────────────────────────────────────────────────────
+
+function buildTotals(
+  txs: Array<{ amount: number | string; sender_id: string }>,
+  userId: string,
+) {
+  const sent = txs.filter(t => t.sender_id === userId).reduce((s, t) => s + Number(t.amount), 0);
+  const recv = txs.filter(t => t.sender_id !== userId).reduce((s, t) => s + Number(t.amount), 0);
+  return { sent, recv };
+}
+
+function buildCatStr(
+  txs: Array<{ amount: number | string; sender_id: string; category?: string | null }>,
+  userId: string,
+) {
+  const cats: Partial<Record<TransactionCategory, number>> = {};
+  txs.filter(t => t.sender_id === userId && t.category).forEach(t => {
+    const c = t.category as TransactionCategory;
+    cats[c] = (cats[c] ?? 0) + Number(t.amount);
+  });
+  if (Object.keys(cats).length === 0) return "None";
+  return Object.entries(cats)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, amt]) => `${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: £${Number(amt).toFixed(2)}`)
+    .join(", ");
+}
+
+// ── Route ─────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -40,41 +69,64 @@ export async function POST(request: NextRequest) {
     conversationHistory: { role: "user" | "assistant"; content: string }[];
   };
 
-  // Fetch user data
-  const monthAgo = subMonths(new Date(), 1).toISOString();
+  // Fetch user data — parallel queries across multiple time horizons
+  const now = new Date();
+  const twelveMonthsAgo = subMonths(now, 12).toISOString();
 
-  const [profileRes, txRes, goalsRes] = await Promise.all([
+  const [profileRes, recentTxRes, longTermTxRes, allTimeTxRes, goalsRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
+    // Last 30 individual transactions — detailed for line-item questions
     supabase
       .from("transactions")
       .select("amount, sender_id, category, description, created_at, type")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .gte("created_at", monthAgo)
       .order("created_at", { ascending: false })
       .limit(30),
+    // 12 months lightweight — for 1-month / 3-month / 12-month aggregates
+    supabase
+      .from("transactions")
+      .select("amount, sender_id, category, created_at")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .gte("created_at", twelveMonthsAgo)
+      .order("created_at", { ascending: false }),
+    // All-time: 2 columns only, no limit — for lifetime totals and avg monthly spend
+    supabase
+      .from("transactions")
+      .select("amount, sender_id")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
     supabase.from("savings_goals").select("*").eq("user_id", user.id),
   ]);
 
   const profile = profileRes.data;
-  const txs = txRes.data ?? [];
+  const recentTxs = recentTxRes.data ?? [];
+  const longTermTxs = longTermTxRes.data ?? [];
+  const allTimeTxs = allTimeTxRes.data ?? [];
   const goals = goalsRes.data ?? [];
 
-  const sent = txs.filter((t) => t.sender_id === user.id);
-  const received = txs.filter((t) => t.sender_id !== user.id);
-  const totalSent = sent.reduce((s, t) => s + Number(t.amount), 0);
-  const totalReceived = received.reduce((s, t) => s + Number(t.amount), 0);
+  // Time-sliced subsets from the 12-month window
+  const thisMonthStart = startOfMonth(now);
+  const threeMonthsAgo = subMonths(now, 3);
+  const thisMonthTxs = longTermTxs.filter(t => new Date(t.created_at) >= thisMonthStart);
+  const threeMonthTxs = longTermTxs.filter(t => new Date(t.created_at) >= threeMonthsAgo);
 
-  const categoryBreakdown: Partial<Record<TransactionCategory, number>> = {};
-  sent.forEach((t) => {
-    const c = t.category as TransactionCategory;
-    categoryBreakdown[c] = (categoryBreakdown[c] ?? 0) + Number(t.amount);
-  });
-  const breakdownStr = Object.entries(categoryBreakdown)
-    .sort((a, b) => b[1] - a[1])
-    .map(([cat, amt]) => `${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: £${Number(amt).toFixed(2)}`)
-    .join(", ");
+  // Aggregate totals per window
+  const thisMonthTotals = buildTotals(thisMonthTxs, user.id);
+  const threeMonthTotals = buildTotals(threeMonthTxs, user.id);
+  const twelveMonthTotals = buildTotals(longTermTxs, user.id);
+  const allTimeTotals = buildTotals(allTimeTxs, user.id);
 
-  const recentTxStr = txs.slice(0, 10).map((t) => {
+  // Account age and avg monthly spend
+  const accountCreatedAt = (profile as Record<string, unknown>)?.created_at as string | undefined;
+  const accountCreated = accountCreatedAt ? new Date(accountCreatedAt) : null;
+  const accountAgeMonths = accountCreated
+    ? Math.round((now.getTime() - accountCreated.getTime()) / (1000 * 60 * 60 * 24 * 30.5))
+    : null;
+  const avgMonthlySpend = accountAgeMonths && accountAgeMonths > 0
+    ? allTimeTotals.sent / accountAgeMonths
+    : null;
+
+  // Recent transaction detail string (last 30 individual items)
+  const recentTxStr = recentTxs.map((t) => {
     const dir = t.sender_id === user.id ? "Sent" : "Received";
     return `${dir} £${Number(t.amount).toFixed(2)} (${t.category}${t.description ? " — " + t.description : ""})`;
   }).join("\n");
@@ -89,12 +141,26 @@ Always be specific and reference real numbers from the user's data.
 
 User: ${profile?.first_name} ${profile?.last_name}
 Balance: £${Number(profile?.balance ?? 0).toFixed(2)}
-Plan: ${profile?.plan}
-Monthly spent: £${totalSent.toFixed(2)}
-Monthly received: £${totalReceived.toFixed(2)}
-Spending by category: ${breakdownStr || "No spending this month"}
-Recent transactions:
+Plan: ${profile?.plan}${accountCreated ? `\nAccount since: ${accountCreated.toLocaleDateString("en-GB", { month: "long", year: "numeric" })} (${accountAgeMonths} months)` : ""}
+
+THIS MONTH (${now.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}):
+Spent: £${thisMonthTotals.sent.toFixed(2)} | Received: £${thisMonthTotals.recv.toFixed(2)}
+By category: ${buildCatStr(thisMonthTxs, user.id)}
+
+LAST 3 MONTHS:
+Spent: £${threeMonthTotals.sent.toFixed(2)} | Received: £${threeMonthTotals.recv.toFixed(2)}
+By category: ${buildCatStr(threeMonthTxs, user.id)}
+
+LAST 12 MONTHS:
+Spent: £${twelveMonthTotals.sent.toFixed(2)} | Received: £${twelveMonthTotals.recv.toFixed(2)}
+By category: ${buildCatStr(longTermTxs, user.id)}
+
+ALL-TIME:
+Total spent: £${allTimeTotals.sent.toFixed(2)} | Total received: £${allTimeTotals.recv.toFixed(2)}${avgMonthlySpend != null ? `\nAvg monthly spend: £${avgMonthlySpend.toFixed(2)}` : ""}
+
+RECENT TRANSACTIONS (last 30 individual items):
 ${recentTxStr || "None"}
+
 Savings goals: ${goalsStr}
 
 Be encouraging and actionable. Never advise on external investments. Only discuss Y-tech services and the user's data.

@@ -74,6 +74,35 @@ For financial reports: analyse the provided transaction data and write a profess
 Present figures and recommendations in short numbered paragraphs, not in markdown tables or bullet lists.` + FORMATTING,
 };
 
+// ── Aggregation helpers ──────────────────────────────────────────────────────
+
+function buildTotals(
+  txs: Array<{ amount: number | string; sender_id: string }>,
+  userId: string,
+) {
+  const sent = txs.filter(t => t.sender_id === userId).reduce((s, t) => s + Number(t.amount), 0);
+  const recv = txs.filter(t => t.sender_id !== userId).reduce((s, t) => s + Number(t.amount), 0);
+  return { sent, recv };
+}
+
+function buildCatStr(
+  txs: Array<{ amount: number | string; sender_id: string; category?: string | null }>,
+  userId: string,
+) {
+  const cats: Partial<Record<TransactionCategory, number>> = {};
+  txs.filter(t => t.sender_id === userId && t.category).forEach(t => {
+    const c = t.category as TransactionCategory;
+    cats[c] = (cats[c] ?? 0) + Number(t.amount);
+  });
+  if (Object.keys(cats).length === 0) return "None";
+  return Object.entries(cats)
+    .sort((a, b) => b[1] - a[1])
+    .map(([cat, amt]) => `${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: £${Number(amt).toFixed(2)}`)
+    .join(", ");
+}
+
+// ── Route ─────────────────────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
   console.log("[neurooffice] Request received");
   console.log("[neurooffice] API key exists:", !!process.env.ANTHROPIC_API_KEY);
@@ -168,49 +197,64 @@ export async function POST(request: NextRequest) {
       userMessage = `Task type: ${tab}\n\n${userMessage}`;
     }
 
-    // 6. Fetch financial context for all agents
+    // 6. Fetch financial context for all agents — parallel queries across multiple time horizons
     console.log("[neurooffice] Fetching financial context...");
-    const monthStart = startOfMonth(new Date()).toISOString();
+    const now = new Date();
+    const twelveMonthsAgo = subMonths(now, 12).toISOString();
 
-    const [profileRes, txRes, goalsRes, monthTxRes] = await Promise.all([
-      supabase.from("profiles").select("balance, first_name, last_name, plan").eq("id", user.id).single(),
+    const [profileRes, recentTxRes, longTermTxRes, allTimeTxRes, goalsRes] = await Promise.all([
+      supabase.from("profiles").select("balance, first_name, last_name, plan, created_at").eq("id", user.id).single(),
+      // Last 30 individual transactions — detailed for line-item questions
       supabase
         .from("transactions")
         .select("amount, sender_id, category, description, created_at, type")
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .order("created_at", { ascending: false })
         .limit(30),
-      supabase.from("savings_goals").select("*").eq("user_id", user.id),
+      // 12 months lightweight — for 1-month / 3-month / 12-month aggregates
       supabase
         .from("transactions")
-        .select("amount, sender_id, category")
+        .select("amount, sender_id, category, created_at")
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .gte("created_at", monthStart),
+        .gte("created_at", twelveMonthsAgo)
+        .order("created_at", { ascending: false }),
+      // All-time: 2 columns only, no limit — for lifetime totals and avg monthly spend
+      supabase
+        .from("transactions")
+        .select("amount, sender_id")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`),
+      supabase.from("savings_goals").select("*").eq("user_id", user.id),
     ]);
 
     const prof = profileRes.data;
-    const txs = txRes.data ?? [];
+    const recentTxs = recentTxRes.data ?? [];
+    const longTermTxs = longTermTxRes.data ?? [];
+    const allTimeTxs = allTimeTxRes.data ?? [];
     const goals = goalsRes.data ?? [];
-    const monthTxs = monthTxRes.data ?? [];
 
-    const monthlySent = monthTxs.filter((t) => t.sender_id === user.id);
-    const monthlyReceived = monthTxs.filter((t) => t.sender_id !== user.id);
-    const totalMonthlySent = monthlySent.reduce((s, t) => s + Number(t.amount), 0);
-    const totalMonthlyReceived = monthlyReceived.reduce((s, t) => s + Number(t.amount), 0);
+    // Time-sliced subsets from the 12-month window
+    const thisMonthStart = startOfMonth(now);
+    const threeMonthsAgoDate = subMonths(now, 3);
+    const thisMonthTxs = longTermTxs.filter(t => new Date(t.created_at) >= thisMonthStart);
+    const threeMonthTxs = longTermTxs.filter(t => new Date(t.created_at) >= threeMonthsAgoDate);
 
-    const catBreakdown: Partial<Record<TransactionCategory, number>> = {};
-    monthlySent.forEach((t) => {
-      const c = t.category as TransactionCategory;
-      catBreakdown[c] = (catBreakdown[c] ?? 0) + Number(t.amount);
-    });
-    const categoryBreakdown = Object.entries(catBreakdown).length > 0
-      ? Object.entries(catBreakdown)
-          .sort((a, b) => b[1] - a[1])
-          .map(([cat, amt]) => `  ${CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? ""} ${cat}: £${Number(amt).toFixed(2)}`)
-          .join("\n")
-      : "  No spending this month";
+    // Aggregate totals per window
+    const thisMonthTotals = buildTotals(thisMonthTxs, user.id);
+    const threeMonthTotals = buildTotals(threeMonthTxs, user.id);
+    const twelveMonthTotals = buildTotals(longTermTxs, user.id);
+    const allTimeTotals = buildTotals(allTimeTxs, user.id);
 
-    const recentTxList = txs.slice(0, 30).map((t) => {
+    // Account age and avg monthly spend
+    const accountCreatedAt = (prof as Record<string, unknown>)?.created_at as string | undefined;
+    const accountCreated = accountCreatedAt ? new Date(accountCreatedAt) : null;
+    const accountAgeMonths = accountCreated
+      ? Math.round((now.getTime() - accountCreated.getTime()) / (1000 * 60 * 60 * 24 * 30.5))
+      : null;
+    const avgMonthlySpend = accountAgeMonths && accountAgeMonths > 0
+      ? allTimeTotals.sent / accountAgeMonths
+      : null;
+
+    const recentTxList = recentTxs.map((t) => {
       const dir = t.sender_id === user.id ? "Sent" : "Received";
       return `  ${dir} £${Number(t.amount).toFixed(2)} · ${t.category}${t.description ? " — " + t.description : ""}`;
     }).join("\n") || "  None";
@@ -222,16 +266,24 @@ export async function POST(request: NextRequest) {
     const financialContext = `USER FINANCIAL CONTEXT:
 Name: ${prof?.first_name ?? ""} ${prof?.last_name ?? ""}
 Current balance: £${Number(prof?.balance ?? 0).toFixed(2)}
-Plan: ${prof?.plan ?? plan}
+Plan: ${prof?.plan ?? plan}${accountCreated ? `\nAccount since: ${accountCreated.toLocaleDateString("en-GB", { month: "long", year: "numeric" })} (${accountAgeMonths} months)` : ""}
 
-This month:
-- Total spent: £${totalMonthlySent.toFixed(2)}
-- Total received: £${totalMonthlyReceived.toFixed(2)}
+THIS MONTH (${now.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}):
+  Spent: £${thisMonthTotals.sent.toFixed(2)} | Received: £${thisMonthTotals.recv.toFixed(2)}
+  By category: ${buildCatStr(thisMonthTxs, user.id)}
 
-Spending by category this month:
-${categoryBreakdown}
+LAST 3 MONTHS:
+  Spent: £${threeMonthTotals.sent.toFixed(2)} | Received: £${threeMonthTotals.recv.toFixed(2)}
+  By category: ${buildCatStr(threeMonthTxs, user.id)}
 
-Recent transactions (last 30):
+LAST 12 MONTHS:
+  Spent: £${twelveMonthTotals.sent.toFixed(2)} | Received: £${twelveMonthTotals.recv.toFixed(2)}
+  By category: ${buildCatStr(longTermTxs, user.id)}
+
+ALL-TIME:
+  Total spent: £${allTimeTotals.sent.toFixed(2)} | Total received: £${allTimeTotals.recv.toFixed(2)}${avgMonthlySpend != null ? `\n  Avg monthly spend: £${avgMonthlySpend.toFixed(2)}` : ""}
+
+RECENT TRANSACTIONS (last 30 individual items):
 ${recentTxList}
 
 Savings goals:
@@ -242,13 +294,12 @@ Use this data when relevant to give personalized advice.
 
     // 7. For accountant financial-report, override userMessage with structured prompt
     if (agentType === "accountant" && tab === "financial-report") {
-      const allTxSent = txs.filter((t) => t.sender_id === user.id);
-      const allTxReceived = txs.filter((t) => t.sender_id !== user.id);
-      userMessage = `Generate a professional financial report.
-Total Spent (last 30 transactions): £${allTxSent.reduce((s, t) => s + Number(t.amount), 0).toFixed(2)}
-Total Received: £${allTxReceived.reduce((s, t) => s + Number(t.amount), 0).toFixed(2)}
-Net: £${(allTxReceived.reduce((s, t) => s + Number(t.amount), 0) - allTxSent.reduce((s, t) => s + Number(t.amount), 0)).toFixed(2)}
-Transaction count: ${txs.length}`;
+      userMessage = `Generate a professional financial report using the data in the financial context above.
+This month: spent £${thisMonthTotals.sent.toFixed(2)}, received £${thisMonthTotals.recv.toFixed(2)}
+Last 3 months: spent £${threeMonthTotals.sent.toFixed(2)}, received £${threeMonthTotals.recv.toFixed(2)}
+Last 12 months: spent £${twelveMonthTotals.sent.toFixed(2)}, received £${twelveMonthTotals.recv.toFixed(2)}
+All-time: spent £${allTimeTotals.sent.toFixed(2)}, received £${allTimeTotals.recv.toFixed(2)}${avgMonthlySpend != null ? `, avg monthly spend £${avgMonthlySpend.toFixed(2)}` : ""}
+Recent transactions logged: ${recentTxs.length}`;
     }
 
     // 8. Call Anthropic with financial context prepended to system prompt
