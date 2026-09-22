@@ -263,6 +263,11 @@ export async function POST(request: NextRequest) {
       ? goals.map((g) => `  ${g.emoji ?? "🎯"} ${g.name}: £${g.current_amount}/£${g.target_amount}`).join("\n")
       : "  None";
 
+    // Per-user session context. This renders AFTER the static agent prompt (see
+    // the messages.create call below) because it is the volatile half of the
+    // prompt. Everything here is a DB figure or a month-granularity date — no
+    // timestamps, UUIDs or live counters — so the bytes stay identical across
+    // the turns of one conversation and the cache hits on turn 2+.
     const financialContext = `USER FINANCIAL CONTEXT:
 Name: ${prof?.first_name ?? ""} ${prof?.last_name ?? ""}
 Current balance: £${Number(prof?.balance ?? 0).toFixed(2)}
@@ -289,8 +294,7 @@ ${recentTxList}
 Savings goals:
 ${goalsList}
 
-Use this data when relevant to give personalized advice.
----`;
+Use this data when relevant to give personalized advice.`;
 
     // 7. For accountant financial-report, override userMessage with structured prompt
     if (agentType === "accountant" && tab === "financial-report") {
@@ -308,18 +312,38 @@ Recent transactions logged: ${recentTxs.length}`;
       content: m.content,
     }));
 
-    const systemPrompt = `${financialContext}\n\n${SYSTEM_PROMPTS[agentType]}`;
-
     console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-5-20250929, history:", history.length, "max_tokens:", MAX_TOKENS[agentType]);
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5-20250929",
       max_tokens: MAX_TOKENS[agentType],
-      system: systemPrompt,
-      messages: [...history, { role: "user", content: userMessage }],
+      // Prompt caching. The agent prompt goes FIRST (static, shared by every
+      // user of this agent type) and the financial context SECOND — the reverse
+      // of the old `${financialContext}\n\n${SYSTEM_PROMPTS[agentType]}` order,
+      // which put volatile bytes in front of the static ones and made the static
+      // half uncacheable. Two of the four allowed breakpoints:
+      //   1. end of system  — agent prompt + this user's financial context.
+      //   2. end of messages — lets conversation history accrue into the cache.
+      system: [
+        { type: "text", text: SYSTEM_PROMPTS[agentType] },
+        { type: "text", text: financialContext, cache_control: { type: "ephemeral" } },
+      ],
+      messages: [
+        ...history,
+        {
+          role: "user",
+          content: [{ type: "text", text: userMessage, cache_control: { type: "ephemeral" } }],
+        },
+      ],
     });
 
     console.log("[neurooffice] Anthropic response received, stop_reason:", response.stop_reason);
+    console.log("[neurooffice] usage:", JSON.stringify({
+      cache_read_input_tokens: response.usage.cache_read_input_tokens,
+      cache_creation_input_tokens: response.usage.cache_creation_input_tokens,
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+    }));
 
     const result = response.content[0]?.type === "text" ? response.content[0].text : "";
 

@@ -40,6 +40,22 @@ function buildCatStr(
     .join(", ");
 }
 
+// ── Static system prompt ─────────────────────────────────────────────────────
+// Byte-identical on every request for every user. Anthropic renders the prompt
+// as tools → system → messages and caches by prefix match, so this has to come
+// before anything user-specific: a single changed byte invalidates everything
+// after it.
+
+const STATIC_SYSTEM_PROMPT = `You are a personal AI financial assistant for Y-tech. You are helpful, warm, and professional.
+Respond in the user's language (detect from their message — English or Russian).
+Always be specific and reference real numbers from the user's data.
+
+Be encouraging and actionable. Never advise on external investments. Only discuss Y-tech services and the user's data.
+
+Be concise. Answer directly without restating the question or adding preamble. Skip unnecessary pleasantries. Get to the point in the first sentence. Keep responses focused — 2-3 short paragraphs maximum unless the user explicitly asks for more detail or a comprehensive document/report.
+
+Format your responses in plain, natural language without markdown syntax. Do NOT use asterisks for bold (**text**), hash symbols for headers (## Header), or markdown bullet dashes (- item) — use natural sentence flow or simple numbered lists with actual numbers (1. 2. 3.) instead. Write like you're talking to a colleague — clear, structured with short paragraphs, but in plain conversational text. Use line breaks between ideas instead of markdown headers. If you need emphasis, just write clearly rather than using bold formatting. Use emojis sparingly — at most 1-2 per response, only when they genuinely add clarity (e.g. a warning ⚠️ or a single relevant icon), never decoratively on every line or every bullet point.`;
+
 // ── Route ─────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -135,10 +151,11 @@ export async function POST(request: NextRequest) {
     ? goals.map((g) => `${g.emoji} ${g.name}: £${g.current_amount}/£${g.target_amount}`).join(", ")
     : "None";
 
-  const systemPrompt = `You are a personal AI financial assistant for Y-tech. You are helpful, warm, and professional.
-Respond in the user's language (detect from their message — English or Russian).
-Always be specific and reference real numbers from the user's data.
-
+  // Per-user session context — volatile relative to STATIC_SYSTEM_PROMPT, so it
+  // renders after it. Everything here is a DB figure or a month-granularity date;
+  // no timestamps, UUIDs or live counters, so these bytes stay identical across
+  // the turns of one conversation and the cache actually hits on turn 2+.
+  const userContext = `USER FINANCIAL CONTEXT:
 User: ${profile?.first_name} ${profile?.last_name}
 Balance: £${Number(profile?.balance ?? 0).toFixed(2)}
 Plan: ${profile?.plan}${accountCreated ? `\nAccount since: ${accountCreated.toLocaleDateString("en-GB", { month: "long", year: "numeric" })} (${accountAgeMonths} months)` : ""}
@@ -161,13 +178,7 @@ Total spent: £${allTimeTotals.sent.toFixed(2)} | Total received: £${allTimeTot
 RECENT TRANSACTIONS (last 30 individual items):
 ${recentTxStr || "None"}
 
-Savings goals: ${goalsStr}
-
-Be encouraging and actionable. Never advise on external investments. Only discuss Y-tech services and the user's data.
-
-Be concise. Answer directly without restating the question or adding preamble. Skip unnecessary pleasantries. Get to the point in the first sentence. Keep responses focused — 2-3 short paragraphs maximum unless the user explicitly asks for more detail or a comprehensive document/report.
-
-Format your responses in plain, natural language without markdown syntax. Do NOT use asterisks for bold (**text**), hash symbols for headers (## Header), or markdown bullet dashes (- item) — use natural sentence flow or simple numbered lists with actual numbers (1. 2. 3.) instead. Write like you're talking to a colleague — clear, structured with short paragraphs, but in plain conversational text. Use line breaks between ideas instead of markdown headers. If you need emphasis, just write clearly rather than using bold formatting. Use emojis sparingly — at most 1-2 per response, only when they genuinely add clarity (e.g. a warning ⚠️ or a single relevant icon), never decoratively on every line or every bullet point.`;
+Savings goals: ${goalsStr}`;
 
   const history: Anthropic.Messages.MessageParam[] = (conversationHistory ?? []).map((h) => ({
     role: h.role,
@@ -177,9 +188,30 @@ Format your responses in plain, natural language without markdown syntax. Do NOT
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-5-20250929",
     max_tokens: 1000,
-    system: systemPrompt,
-    messages: [...history, { role: "user", content: message }],
+    // Prompt caching. Two breakpoints, spending 2 of the 4 the API allows:
+    //   1. end of system  — covers static prompt + this user's financial context,
+    //      reused by every turn of the conversation.
+    //   2. end of messages — makes the conversation history accrue into the cache
+    //      as the chat grows, so turn N reads turns 1..N-1 at ~10% of input cost.
+    system: [
+      { type: "text", text: STATIC_SYSTEM_PROMPT },
+      { type: "text", text: userContext, cache_control: { type: "ephemeral" } },
+    ],
+    messages: [
+      ...history,
+      {
+        role: "user",
+        content: [{ type: "text", text: message, cache_control: { type: "ephemeral" } }],
+      },
+    ],
   });
+
+  console.log("[ai] usage:", JSON.stringify({
+    cache_read_input_tokens: response.usage.cache_read_input_tokens,
+    cache_creation_input_tokens: response.usage.cache_creation_input_tokens,
+    input_tokens: response.usage.input_tokens,
+    output_tokens: response.usage.output_tokens,
+  }));
 
   const reply = response.content[0].type === "text" ? response.content[0].text : "";
 
