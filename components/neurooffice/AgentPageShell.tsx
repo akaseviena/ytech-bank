@@ -269,13 +269,29 @@ export default function AgentPageShell({
 
   return (
     <PageTransition>
+      {/* Persistent back button — mobile only, fixed so it's always reachable when scrolled deep */}
+      <Link
+        href="/neurooffice"
+        aria-label="Back to NeuroOffice"
+        className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 flex items-center justify-center rounded-full"
+        style={{
+          background: "rgba(255,255,255,0.5)",
+          backdropFilter: "blur(20px) saturate(200%)",
+          WebkitBackdropFilter: "blur(20px) saturate(200%)",
+          border: "1px solid rgba(255,255,255,0.9)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+        }}
+      >
+        <ArrowLeft className="w-4 h-4 text-[#1A1A1A]" />
+      </Link>
+
       <div className="p-6 max-w-3xl mx-auto">
 
-        {/* Back + New conversation */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Back (desktop) + New conversation */}
+        <div className="flex items-center justify-end lg:justify-between mb-6">
           <Link
             href="/neurooffice"
-            className="inline-flex items-center gap-1.5 text-sm text-[#6B6B6B] hover:text-[#F5A623] transition-colors font-semibold"
+            className="hidden lg:inline-flex items-center gap-1.5 text-sm text-[#6B6B6B] hover:text-[#F5A623] transition-colors font-semibold"
           >
             <ArrowLeft className="w-4 h-4" />
             NeuroOffice

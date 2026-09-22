@@ -244,7 +244,7 @@ export default function AIAssistantPage() {
 
   return (
     <PageTransition>
-      <div className="flex flex-col h-[calc(100vh-0px)] lg:h-screen">
+      <div className="flex flex-col h-[calc(100vh-80px)] lg:h-screen">
         {/* Header */}
         <div
           className="px-6 py-4 flex items-center gap-3"
@@ -377,13 +377,12 @@ export default function AIAssistantPage() {
           </div>
         )}
 
-        {/* Input */}
+        {/* Input — pb-20 on mobile clears BottomNav (68px) + FeedbackButton (96–148px from bottom) */}
         <div
-          className="px-4 py-4"
+          className="px-4 pt-4 pb-20 lg:pb-4"
           style={{
             background: "#FFFFFF",
             borderTop: "1px solid #F0F0F0",
-            paddingBottom: "max(16px, env(safe-area-inset-bottom))",
           }}
         >
           <div className="flex gap-3 max-w-3xl mx-auto">
