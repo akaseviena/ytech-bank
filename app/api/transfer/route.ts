@@ -20,6 +20,22 @@ export async function POST(request: NextRequest) {
 
   const { receiver_id, amount, description, category } = parsed.data;
 
+  // Frozen cards can't send money. transfer_funds() enforces this atomically
+  // under its row lock — this check just returns the friendlier payload the
+  // client needs to render the unfreeze prompt.
+  const { data: senderProfile } = await supabase
+    .from("profiles")
+    .select("card_frozen")
+    .eq("id", user.id)
+    .single();
+
+  if (senderProfile?.card_frozen) {
+    return NextResponse.json(
+      { error: "Your card is frozen 🔒 — unfreeze it first to send money.", code: "card_frozen" },
+      { status: 403 },
+    );
+  }
+
   const { data, error } = await supabase.rpc("transfer_funds", {
     p_sender_id: user.id,
     p_receiver_id: receiver_id,
@@ -29,7 +45,12 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data?.success) return NextResponse.json({ error: data?.error ?? "Transfer failed" }, { status: 400 });
+  if (!data?.success) {
+    return NextResponse.json(
+      { error: data?.error ?? "Transfer failed", ...(data?.code ? { code: data.code } : {}) },
+      { status: data?.code === "card_frozen" ? 403 : 400 },
+    );
+  }
 
   return NextResponse.json({ success: true });
 }

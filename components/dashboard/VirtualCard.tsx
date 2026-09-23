@@ -20,18 +20,41 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
   const { showToast } = useToast();
 
   async function toggleFreeze() {
+    if (freezing) return;
+    const next = !frozen;
+
+    // Optimistic — flip now, revert below if the write doesn't land.
+    setFrozen(next);
     setFreezing(true);
+
     const supabase = createClient();
-    const { error } = await supabase
+    // The .select().single() is load-bearing: without it supabase-js resolves
+    // with error === null even when RLS filtered the update to zero rows, so a
+    // silently rejected write would look like it succeeded until the next load.
+    const { data, error } = await supabase
       .from("profiles")
-      .update({ card_frozen: !frozen })
-      .eq("id", profile.id);
-    if (!error) {
-      setFrozen(!frozen);
-      showToast("info", frozen ? "Card unfrozen" : "Card frozen",
-        frozen ? "Your card is now active." : "Your card has been frozen.");
-    }
+      .update({ card_frozen: next })
+      .eq("id", profile.id)
+      .select("card_frozen")
+      .single();
+
     setFreezing(false);
+
+    if (error || !data) {
+      setFrozen(!next); // revert the optimistic flip
+      console.error("[VirtualCard] freeze toggle failed:", error);
+      showToast(
+        "error",
+        next ? "Couldn't freeze card" : "Couldn't unfreeze card",
+        error?.message ?? "Please try again.",
+      );
+      return;
+    }
+
+    // Trust the row the DB actually wrote, not our guess.
+    setFrozen(data.card_frozen);
+    showToast("info", next ? "Card frozen" : "Card unfrozen",
+      next ? "Your card has been frozen." : "Your card is now active.");
   }
 
   const cardDigits = profile.account_number.replace(/\D/g, "").padEnd(16, "0");

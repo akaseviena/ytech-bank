@@ -77,10 +77,23 @@ CREATE OR REPLACE FUNCTION transfer_funds(
   p_amount DECIMAL, p_description TEXT, p_category TEXT DEFAULT 'other'
 )
 RETURNS JSONB AS $$
-DECLARE v_balance DECIMAL;
+DECLARE
+  v_balance DECIMAL;
+  v_frozen  BOOLEAN;
 BEGIN
-  SELECT balance INTO v_balance FROM profiles WHERE id = p_sender_id FOR UPDATE;
+  SELECT balance, COALESCE(card_frozen, FALSE)
+    INTO v_balance, v_frozen
+    FROM profiles WHERE id = p_sender_id FOR UPDATE;
   IF NOT FOUND THEN RETURN jsonb_build_object('success',false,'error','Sender not found'); END IF;
+  -- A frozen card cannot move money. Enforced here as well as in the UI so
+  -- calling the RPC directly can't bypass it.
+  IF v_frozen THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'code',    'card_frozen',
+      'error',   'Your card is frozen 🔒 — unfreeze it first to send money.'
+    );
+  END IF;
   IF p_sender_id = p_receiver_id THEN RETURN jsonb_build_object('success',false,'error','Cannot transfer to yourself'); END IF;
   IF v_balance < p_amount THEN RETURN jsonb_build_object('success',false,'error','Insufficient funds'); END IF;
   IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = p_receiver_id) THEN RETURN jsonb_build_object('success',false,'error','Recipient not found'); END IF;

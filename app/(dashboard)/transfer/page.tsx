@@ -9,6 +9,7 @@ import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
 import SuccessAnimation from "@/components/ui/SuccessAnimation";
+import FrozenCardModal from "@/components/ui/FrozenCardModal";
 import { useToast } from "@/components/ui/Toast";
 import { getInitials, formatCurrency } from "@/lib/utils";
 import { CATEGORY_INFO, type TransactionCategory, type Profile } from "@/types";
@@ -35,13 +36,17 @@ export default function TransferPage() {
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  const [frozen, setFrozen] = useState(false);
+  const [showFrozenModal, setShowFrozenModal] = useState(false);
+  const [unfreezing, setUnfreezing] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("id,balance,first_name,last_name,account_number,avatar_url,plan").eq("id", user.id).single();
+      const { data } = await supabase.from("profiles").select("id,balance,first_name,last_name,account_number,avatar_url,plan,card_frozen").eq("id", user.id).single();
       setCurrentUser(data as Profile);
+      setFrozen(Boolean(data?.card_frozen));
     });
   }, []);
 
@@ -64,11 +69,26 @@ export default function TransferPage() {
     return () => clearTimeout(t);
   }, [query, searchUsers]);
 
-  async function handleSend() {
-    if (!recipient || !currentUser || !amount) return;
+  /** Returns the parsed amount, or null if the transfer shouldn't proceed. */
+  function validateTransfer(): number | null {
+    if (!recipient || !currentUser || !amount) return null;
     const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) { showToast("error", "Invalid amount"); return; }
-    if (num > (currentUser.balance ?? 0)) { showToast("error", "Insufficient funds"); return; }
+    if (isNaN(num) || num <= 0) { showToast("error", "Invalid amount"); return null; }
+    if (num > (currentUser.balance ?? 0)) { showToast("error", "Insufficient funds"); return null; }
+    return num;
+  }
+
+  async function handleSend() {
+    const num = validateTransfer();
+    if (num === null) return;
+    // Frozen cards can't send money. transfer_funds() enforces this server-side
+    // too — this check just saves a round-trip and gives a nicer prompt.
+    if (frozen) { setShowFrozenModal(true); return; }
+    await performTransfer(num);
+  }
+
+  async function performTransfer(num: number) {
+    if (!recipient || !currentUser) return;
     setSending(true);
     const supabase = createClient();
     const { data, error } = await supabase.rpc("transfer_funds", {
@@ -80,11 +100,47 @@ export default function TransferPage() {
     });
     setSending(false);
     if (error || !data?.success) {
+      // Server-side rejection — e.g. the card was frozen in another tab after
+      // this page loaded. Resync local state and prompt instead of erroring out.
+      if (data?.code === "card_frozen") {
+        setFrozen(true);
+        setShowFrozenModal(true);
+        return;
+      }
       showToast("error", "Transfer failed", data?.error ?? error?.message);
       return;
     }
     setSuccess(true);
     setTimeout(() => { router.push("/dashboard"); router.refresh(); }, 3000);
+  }
+
+  async function handleUnfreezeAndContinue() {
+    if (!currentUser || unfreezing) return;
+    setUnfreezing(true);
+    const supabase = createClient();
+    // .select().single() so an RLS-filtered zero-row update surfaces as an
+    // error rather than a silent no-op (see VirtualCard.toggleFreeze).
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ card_frozen: false })
+      .eq("id", currentUser.id)
+      .select("card_frozen")
+      .single();
+    setUnfreezing(false);
+
+    if (error || !data) {
+      console.error("[transfer] unfreeze failed:", error);
+      showToast("error", "Couldn't unfreeze card", error?.message ?? "Please try again.");
+      return;
+    }
+
+    setFrozen(false);
+    setShowFrozenModal(false);
+    showToast("info", "Card unfrozen", "Your card is now active.");
+
+    // Carry straight on with the transfer they were already trying to make.
+    const num = validateTransfer();
+    if (num !== null) await performTransfer(num);
   }
 
   if (success) {
@@ -282,6 +338,13 @@ export default function TransferPage() {
           </AnimatePresence>
         </GlassCard>
       </div>
+
+      <FrozenCardModal
+        open={showFrozenModal}
+        unfreezing={unfreezing}
+        onCancel={() => setShowFrozenModal(false)}
+        onUnfreeze={handleUnfreezeAndContinue}
+      />
     </PageTransition>
   );
 }
