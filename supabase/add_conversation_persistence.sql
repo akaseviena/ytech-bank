@@ -6,6 +6,11 @@
 --
 ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
 
+-- Table-level grant — RLS below is the per-row gate, but Postgres checks this
+-- first; without it, writes fail "permission denied for table ai_conversations"
+-- before any policy runs. See fix-profiles-grants.sql for the full story.
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_conversations TO authenticated;
+
 DROP POLICY IF EXISTS "own ai conversations" ON ai_conversations;
 CREATE POLICY "own ai conversations" ON ai_conversations
   FOR ALL USING (auth.uid() = user_id);
@@ -24,6 +29,12 @@ CREATE TABLE IF NOT EXISTS neurooffice_conversations (
 );
 
 ALTER TABLE neurooffice_conversations ENABLE ROW LEVEL SECURITY;
+
+-- Table-level grant — RLS below is the per-row gate, but Postgres checks this
+-- first; without it, writes fail "permission denied for table
+-- neurooffice_conversations" before any policy runs. See
+-- fix-profiles-grants.sql for the full story.
+GRANT SELECT, INSERT, UPDATE, DELETE ON neurooffice_conversations TO authenticated;
 
 DROP POLICY IF EXISTS "own neurooffice conversations" ON neurooffice_conversations;
 CREATE POLICY "own neurooffice conversations" ON neurooffice_conversations

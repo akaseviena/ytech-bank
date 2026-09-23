@@ -134,6 +134,18 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE savings_goals ENABLE ROW LEVEL SECURITY;
 
+-- Table-level grants. RLS policies below decide which ROWS a role may touch,
+-- but Postgres checks table-level privilege first — without these, writes
+-- fail with "permission denied for table X" before any policy is even
+-- evaluated (distinct from an RLS rejection, which instead reads
+-- "new row violates row-level security policy for table X"). Every table
+-- the authenticated client can write to needs one of these.
+GRANT SELECT, INSERT, UPDATE, DELETE ON profiles         TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON transactions     TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON notifications    TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ai_conversations TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON savings_goals    TO authenticated;
+
 DROP POLICY IF EXISTS "own profile" ON profiles;
 CREATE POLICY "own profile" ON profiles FOR ALL USING (auth.uid() = id);
 
