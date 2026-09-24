@@ -91,7 +91,11 @@ export async function POST(request: Request) {
     );
   }
 
-  // Resolve or create conversation
+  // Resolve or create conversation. A client-supplied conversationId is only
+  // ever reused if it resolves to a row this user already owns — otherwise
+  // (wrong owner, or it doesn't exist) mint a fresh id instead of trusting
+  // it. The upsert below is keyed on `id`; reusing an unverified id would
+  // let a caller silently adopt/overwrite another user's conversation row.
   let conversationId = parsed.data.conversationId;
   let storedMessages: StoredMessage[] = [];
 
@@ -102,7 +106,11 @@ export async function POST(request: Request) {
       .eq("id", conversationId)
       .eq("user_id", user.id)
       .single();
-    if (data) storedMessages = (data.messages as StoredMessage[]) ?? [];
+    if (data) {
+      storedMessages = (data.messages as StoredMessage[]) ?? [];
+    } else {
+      conversationId = crypto.randomUUID();
+    }
   } else {
     conversationId = crypto.randomUUID();
   }
@@ -191,7 +199,7 @@ export async function POST(request: Request) {
         await admin.from("ai_conversations").update({
           messages: finalMessages,
           updated_at: assistantTimestamp,
-        }).eq("id", conversationId);
+        }).eq("id", conversationId).eq("user_id", user.id);
 
         enq("done", { stopReason: finalMsg.stop_reason });
         controller.close();
@@ -207,7 +215,7 @@ export async function POST(request: Request) {
             await admin.from("ai_conversations").update({
               messages: partialMessages,
               updated_at: errorTimestamp,
-            }).eq("id", conversationId);
+            }).eq("id", conversationId).eq("user_id", user.id);
           } catch { /* best effort */ }
         }
         enq("error", { error: "upstream_error", message: msg });
