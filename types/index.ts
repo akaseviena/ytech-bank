@@ -128,7 +128,7 @@ export const PLAN_INFO: Record<Plan, PlanInfo> = {
   metal: {
     id: "metal",
     name: "Metal",
-    price: "£14.90/mo",
+    price: "£18.90/mo",
     features: [
       "Premium metal card",
       "Extended insurance",
@@ -138,7 +138,7 @@ export const PLAN_INFO: Record<Plan, PlanInfo> = {
   ultimate: {
     id: "ultimate",
     name: "Ultimate",
-    price: "£34.90/mo",
+    price: "£44.90/mo",
     emoji: "👑",
     popular: true,
     features: [
@@ -152,7 +152,7 @@ export const PLAN_INFO: Record<Plan, PlanInfo> = {
   business: {
     id: "business",
     name: "Business",
-    price: "from £30/mo",
+    price: "from £40/mo",
     features: [
       "10 corporate cards",
       "Full NeuroOffice AI",

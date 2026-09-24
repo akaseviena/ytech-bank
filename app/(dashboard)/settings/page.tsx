@@ -17,9 +17,9 @@ const PLAN_PRICE: Record<Plan, number> = {
   basic:    0,
   standard: 4.90,
   travel:   9.90,
-  metal:    14.90,
-  ultimate: 34.90,
-  business: 30.00,
+  metal:    18.90,
+  ultimate: 44.90,
+  business: 40.00,
 };
 
 const LG_OVERLAY: React.CSSProperties = {
