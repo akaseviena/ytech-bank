@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Snowflake, Eye, EyeOff, Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +31,7 @@ const CARD_STYLES = {
 } as const;
 
 export default function VirtualCard({ profile }: VirtualCardProps) {
+  const router = useRouter();
   const [showNumber, setShowNumber] = useState(false);
   const [showCvv, setShowCvv] = useState(false);
   const [frozen, setFrozen] = useState(profile.card_frozen);
@@ -63,6 +65,10 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
     }
 
     setCardColor(data.card_color as "yellow" | "blue");
+    // Invalidate the Router Cache for this route — without this, navigating
+    // back to /dashboard (a nav-link click, not a hard reload) can serve the
+    // RSC payload cached from before this write and show the stale color.
+    router.refresh();
   }
 
   async function toggleFreeze() {
