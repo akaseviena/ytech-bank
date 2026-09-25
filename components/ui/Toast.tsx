@@ -55,7 +55,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const icons = {
     success: <CheckCircle className="w-5 h-5 text-[#34C759]" />,
     error: <XCircle className="w-5 h-5 text-[#FF3B30]" />,
-    info: <Info className="w-5 h-5 text-[#F5A623]" />,
+    info: <Info className="w-5 h-5 text-[#F5C800]" />,
   };
 
   return (
@@ -81,7 +81,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         <div style={{
           height: 2,
           width: "60%",
-          background: "linear-gradient(90deg, transparent 0%, rgba(245,166,35,0.5) 30%, rgba(255,215,0,0.7) 50%, rgba(245,166,35,0.5) 70%, transparent 100%)",
+          background: "linear-gradient(90deg, transparent 0%, rgba(245,200,0,0.5) 30%, rgba(255,215,0,0.7) 50%, rgba(245,200,0,0.5) 70%, transparent 100%)",
           borderRadius: "0 0 2px 2px",
         }} />
       </div>

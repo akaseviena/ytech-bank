@@ -46,7 +46,7 @@ function GlassShine() {
             height: 2,
             width: "60%",
             background:
-              "linear-gradient(90deg, transparent 0%, rgba(245,166,35,0.6) 30%, rgba(255,215,0,0.85) 50%, rgba(245,166,35,0.6) 70%, transparent 100%)",
+              "linear-gradient(90deg, transparent 0%, rgba(245,200,0,0.6) 30%, rgba(255,215,0,0.85) 50%, rgba(245,200,0,0.6) 70%, transparent 100%)",
             borderRadius: "0 0 2px 2px",
           }}
         />
@@ -106,7 +106,7 @@ export default function FeedbackButton({ userEmail }: FeedbackButtonProps) {
                     background: "rgba(255,255,255,0.92)",
                     backdropFilter: "blur(16px)",
                     WebkitBackdropFilter: "blur(16px)",
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(245,166,35,0.15)",
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(245,200,0,0.15)",
                   }}
                 >
                   Send Feedback
@@ -126,12 +126,12 @@ export default function FeedbackButton({ userEmail }: FeedbackButtonProps) {
             style={{
               width: 52,
               height: 52,
-              background: "linear-gradient(135deg, #FFD700 0%, #F5A623 100%)",
-              boxShadow: "0 4px 20px rgba(245,166,35,0.5), 0 1px 4px rgba(0,0,0,0.12)",
+              background: "linear-gradient(135deg, #FFDC46 0%, #F5C800 100%)",
+              boxShadow: "0 4px 20px rgba(245,200,0,0.5), 0 1px 4px rgba(0,0,0,0.12)",
             }}
-            className="rounded-full flex items-center justify-center transition-shadow hover:shadow-[0_6px_28px_rgba(245,166,35,0.65)]"
+            className="rounded-full flex items-center justify-center transition-shadow hover:shadow-[0_6px_28px_rgba(245,200,0,0.65)]"
           >
-            <MessageSquarePlus className="w-5 h-5 text-white" strokeWidth={2} />
+            <MessageSquarePlus className="w-5 h-5 text-[#3A2E00]" strokeWidth={2} />
           </motion.button>
         </div>
       </div>
@@ -167,7 +167,7 @@ export default function FeedbackButton({ userEmail }: FeedbackButtonProps) {
                       height: 2,
                       width: 56,
                       marginTop: 5,
-                      background: "linear-gradient(90deg, #FFD700, #F5A623)",
+                      background: "linear-gradient(90deg, #FFDC46, #F5C800)",
                       borderRadius: 1,
                     }}
                   />
@@ -189,7 +189,7 @@ export default function FeedbackButton({ userEmail }: FeedbackButtonProps) {
                 {/* Spinner shown while iframe loads */}
                 {!loaded && (
                   <div className="flex justify-center items-center py-16">
-                    <div className="w-8 h-8 rounded-full border-2 border-[#F5A623] border-t-transparent animate-spin" />
+                    <div className="w-8 h-8 rounded-full border-2 border-[#F5C800] border-t-transparent animate-spin" />
                   </div>
                 )}
 
@@ -214,7 +214,7 @@ export default function FeedbackButton({ userEmail }: FeedbackButtonProps) {
                       href="/privacy"
                       target="_blank"
                       rel="noopener"
-                      style={{ color: "#F5A623" }}
+                      style={{ color: "#F5C800" }}
                     >
                       See our Privacy Policy.
                     </a>

@@ -61,7 +61,7 @@ export default function CookiesPage() {
           </p>
           <p>
             Questions:{" "}
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5A623" }}>
+            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
               info@ytechfinance.com
             </a>
           </p>

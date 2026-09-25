@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
       >
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-          style={{ border: "1.5px solid rgba(245,166,35,0.5)", background: "rgba(255,255,255,0.9)" }}
+          style={{ border: "1.5px solid rgba(245,200,0,0.5)", background: "rgba(255,255,255,0.9)" }}
         >
           <img src="/logo.PNG" alt="Y-tech" width={40} height={40} style={{ objectFit: "contain" }} />
         </div>
@@ -131,14 +131,14 @@ export default function ResetPasswordPage() {
               </p>
               <Link
                 href="/forgot-password"
-                className="inline-block font-semibold text-sm text-[#F5A623] hover:text-[#C8860A] transition-colors"
+                className="inline-block font-semibold text-sm text-[#F5C800] hover:text-[#EFC000] transition-colors"
               >
                 Request a new reset link →
               </Link>
             </motion.div>
           ) : !ready ? (
             <div className="flex justify-center py-8">
-              <div className="w-8 h-8 rounded-full border-2 border-[#F5A623] border-t-transparent animate-spin" />
+              <div className="w-8 h-8 rounded-full border-2 border-[#F5C800] border-t-transparent animate-spin" />
             </div>
           ) : (
             <>

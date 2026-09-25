@@ -34,6 +34,7 @@ export interface Profile {
   account_number: string;
   currency: string;
   card_frozen: boolean;
+  card_color: "yellow" | "blue";
   created_at: string;
   updated_at: string;
 }

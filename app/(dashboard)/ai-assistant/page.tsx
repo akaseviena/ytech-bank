@@ -29,7 +29,7 @@ function TypingIndicator() {
       {[0, 1, 2].map((i) => (
         <motion.div
           key={i}
-          className="w-2 h-2 rounded-full bg-[#F5A623]"
+          className="w-2 h-2 rounded-full bg-[#F5C800]"
           animate={{ y: [0, -6, 0] }}
           transition={{ duration: 0.5, delay: i * 0.1, repeat: Infinity, repeatDelay: 0.2 }}
         />
@@ -72,16 +72,16 @@ function LimitCard({ resetIn }: { resetIn: string }) {
           background: "rgba(255,255,255,0.85)",
           backdropFilter: "blur(40px) saturate(180%)",
           WebkitBackdropFilter: "blur(40px) saturate(180%)",
-          border: "1.5px solid rgba(245,166,35,0.35)",
+          border: "1.5px solid rgba(245,200,0,0.35)",
           boxShadow: "0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)",
         }}
       >
         <div className="flex flex-col items-center text-center gap-3">
           <div
             className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{ background: "rgba(245,166,35,0.1)", border: "1px solid rgba(245,166,35,0.25)" }}
+            style={{ background: "rgba(245,200,0,0.1)", border: "1px solid rgba(245,200,0,0.25)" }}
           >
-            <Clock className="w-6 h-6 text-[#F5A623]" />
+            <Clock className="w-6 h-6 text-[#F5C800]" />
           </div>
           <div>
             <p className="font-bold text-[#1A1A1A] mb-1.5">
@@ -96,7 +96,7 @@ function LimitCard({ resetIn }: { resetIn: string }) {
           </div>
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-            style={{ background: "rgba(245,166,35,0.1)", color: "#F5A623" }}
+            style={{ background: "rgba(245,200,0,0.1)", color: "#F5C800" }}
           >
             <Clock className="w-3.5 h-3.5" />
             Resets in {resetIn}
@@ -250,7 +250,7 @@ export default function AIAssistantPage() {
           className="px-6 py-4 flex items-center gap-3"
           style={{ background: "#FFFFFF", borderBottom: "1px solid #F0F0F0" }}
         >
-          <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] flex-shrink-0">
+          <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,200,0,0.3)] flex-shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -264,7 +264,7 @@ export default function AIAssistantPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 onClick={() => setShowClearConfirm(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5A623] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,166,35,0.3)] hover:bg-[rgba(245,166,35,0.04)] flex-shrink-0"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 New
@@ -294,7 +294,7 @@ export default function AIAssistantPage() {
                         key={s}
                         whileTap={{ scale: 0.97 }}
                         onClick={() => sendMessage(s)}
-                        className="px-4 py-2 rounded-2xl border border-[rgba(245,166,35,0.2)] text-sm text-[#6B6B6B] hover:text-[#F5A623] hover:border-[rgba(245,166,35,0.5)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.08)] transition-all bg-white"
+                        className="px-4 py-2 rounded-2xl border border-[rgba(245,200,0,0.2)] text-sm text-[#6B6B6B] hover:text-[#F5C800] hover:border-[rgba(245,200,0,0.5)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.08)] transition-all bg-white"
                       >
                         {s}
                       </motion.button>
@@ -317,8 +317,8 @@ export default function AIAssistantPage() {
                         className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end"
                         style={{
                           background: "#FFFFFF",
-                          border: "2px solid rgba(245,166,35,0.5)",
-                          boxShadow: "0 0 8px rgba(245,166,35,0.3)",
+                          border: "2px solid rgba(245,200,0,0.5)",
+                          boxShadow: "0 0 8px rgba(245,200,0,0.3)",
                         }}
                       >
                         <img src="/logo.PNG" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
@@ -327,7 +327,7 @@ export default function AIAssistantPage() {
                     <div
                       className={`max-w-[75%] rounded-3xl px-4 py-3 text-sm font-inter leading-relaxed ${
                         msg.role === "user"
-                          ? "gold-gradient text-white rounded-br-md"
+                          ? "gold-gradient text-[#3A2E00] rounded-br-md"
                           : "glass-card text-[#1A1A1A] rounded-bl-md"
                       }`}
                     >
@@ -343,8 +343,8 @@ export default function AIAssistantPage() {
                     className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end"
                     style={{
                       background: "#FFFFFF",
-                      border: "2px solid rgba(245,166,35,0.5)",
-                      boxShadow: "0 0 8px rgba(245,166,35,0.3)",
+                      border: "2px solid rgba(245,200,0,0.5)",
+                      boxShadow: "0 0 8px rgba(245,200,0,0.3)",
                     }}
                   >
                     <img src="/logo.PNG" alt="" width={20} height={20} style={{ objectFit: "contain" }} />
@@ -369,7 +369,7 @@ export default function AIAssistantPage() {
               <button
                 key={s}
                 onClick={() => sendMessage(s)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-xl border border-[rgba(245,166,35,0.3)] text-xs text-[#6B6B6B] hover:text-[#F5A623] hover:border-[rgba(245,166,35,0.5)] transition-all bg-white"
+                className="flex-shrink-0 px-3 py-1.5 rounded-xl border border-[rgba(245,200,0,0.3)] text-xs text-[#6B6B6B] hover:text-[#F5C800] hover:border-[rgba(245,200,0,0.5)] transition-all bg-white"
               >
                 {s}
               </button>
@@ -399,7 +399,7 @@ export default function AIAssistantPage() {
               whileTap={{ scale: 0.95 }}
               onClick={() => sendMessage(input)}
               disabled={!input.trim() || inputDisabled}
-              className="w-11 h-11 rounded-2xl gold-gradient text-white flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              className="w-11 h-11 rounded-2xl gold-gradient text-[#3A2E00] flex items-center justify-center shadow-[0_2px_8px_rgba(245,200,0,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
             >
               <Send className="w-4 h-4" />
             </motion.button>
@@ -448,7 +448,7 @@ export default function AIAssistantPage() {
               <div className="text-center mb-5">
                 <div
                   className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl"
-                  style={{ background: "rgba(245,166,35,0.1)" }}
+                  style={{ background: "rgba(245,200,0,0.1)" }}
                 >
                   ✨
                 </div>

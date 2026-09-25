@@ -21,10 +21,10 @@ export default function GoldButton({
   ...props
 }: GoldButtonProps) {
   const variants = {
-    gold: "gold-gradient text-white hover:brightness-110 hover:shadow-gold-glow",
+    gold: "gold-gradient text-[#3A2E00] hover:brightness-110 hover:shadow-gold-glow",
     outline:
-      "bg-white border border-[#F5A623] text-[#F5A623] hover:bg-[rgba(245,166,35,0.06)] hover:shadow-gold-glow",
-    ghost: "bg-transparent text-[#F5A623] hover:bg-[rgba(245,166,35,0.08)]",
+      "bg-white border border-[#F5C800] text-[#F5C800] hover:bg-[rgba(245,200,0,0.06)] hover:shadow-gold-glow",
+    ghost: "bg-transparent text-[#F5C800] hover:bg-[rgba(245,200,0,0.08)]",
     danger: "bg-[#FF3B30] text-white hover:bg-[#E0352A] hover:shadow-[0_0_0_3px_rgba(255,59,48,0.15)]",
   };
 

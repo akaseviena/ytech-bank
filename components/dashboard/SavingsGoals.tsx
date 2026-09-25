@@ -44,11 +44,11 @@ const LG_CANCEL: React.CSSProperties = {
 };
 
 const LG_CONFIRM: React.CSSProperties = {
-  background: "linear-gradient(135deg, rgba(255,220,0,0.95) 0%, rgba(245,166,35,0.95) 100%)",
+  background: "linear-gradient(135deg, rgba(255,220,0,0.95) 0%, rgba(245,200,0,0.95) 100%)",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
   border: "1px solid rgba(255,220,100,0.7)",
-  boxShadow: "0 8px 24px rgba(245,166,35,0.5), inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(200,130,0,0.3)",
+  boxShadow: "0 8px 24px rgba(245,200,0,0.5), inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(200,130,0,0.3)",
   borderRadius: 16,
 };
 
@@ -67,7 +67,7 @@ function GlassShine() {
         <div style={{
           height: 2,
           width: "70%",
-          background: "linear-gradient(90deg, transparent 0%, rgba(245,166,35,0.6) 30%, rgba(255,215,0,0.8) 50%, rgba(245,166,35,0.6) 70%, transparent 100%)",
+          background: "linear-gradient(90deg, transparent 0%, rgba(245,200,0,0.6) 30%, rgba(255,215,0,0.8) 50%, rgba(245,200,0,0.6) 70%, transparent 100%)",
           borderRadius: "0 0 2px 2px",
         }} />
       </div>
@@ -179,7 +179,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowNewModal(true)}
-          className="w-8 h-8 rounded-xl gold-gradient text-white flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)] hover:brightness-110 transition-all"
+          className="w-8 h-8 rounded-xl gold-gradient text-[#3A2E00] flex items-center justify-center shadow-[0_2px_8px_rgba(245,200,0,0.3)] hover:brightness-110 transition-all"
         >
           <Plus className="w-4 h-4" />
         </motion.button>
@@ -201,7 +201,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
             return (
               <div
                 key={goal.id}
-                className="flex-shrink-0 w-52 p-4 rounded-[16px] border border-[#F0F0F0] bg-white transition-all duration-200 hover:border-[rgba(245,166,35,0.5)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.1),_0_4px_16px_rgba(245,166,35,0.15)]"
+                className="flex-shrink-0 w-52 p-4 rounded-[16px] border border-[#F0F0F0] bg-white transition-all duration-200 hover:border-[rgba(245,200,0,0.5)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.1),_0_4px_16px_rgba(245,200,0,0.15)]"
               >
                 <div className="text-2xl mb-2">{goal.emoji}</div>
                 <p className="font-semibold text-sm text-[#1A1A1A] truncate mb-1">{goal.name}</p>
@@ -220,7 +220,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
                 {!isComplete ? (
                   <button
                     onClick={() => openFundsModal(goal)}
-                    className="w-full text-[11px] font-bold text-[#F5A623] border border-[rgba(245,166,35,0.4)] rounded-lg py-1.5 hover:bg-[rgba(245,166,35,0.06)] hover:border-[#F5A623] transition-all"
+                    className="w-full text-[11px] font-bold text-[#F5C800] border border-[rgba(245,200,0,0.4)] rounded-lg py-1.5 hover:bg-[rgba(245,200,0,0.06)] hover:border-[#F5C800] transition-all"
                   >
                     + Add funds
                   </button>
@@ -271,7 +271,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
                         key={e}
                         onClick={() => setEmoji(e)}
                         className={`text-xl p-1.5 rounded-xl transition-all duration-200 ${
-                          emoji === e ? "bg-[rgba(245,166,35,0.1)] ring-2 ring-[#F5A623]" : "hover:bg-[rgba(0,0,0,0.06)]"
+                          emoji === e ? "bg-[rgba(245,200,0,0.1)] ring-2 ring-[#F5C800]" : "hover:bg-[rgba(0,0,0,0.06)]"
                         }`}
                       >
                         {e}
@@ -322,7 +322,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
               <GlassShine />
               <div className="relative flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <PiggyBank className="w-5 h-5 text-[#F5A623]" />
+                  <PiggyBank className="w-5 h-5 text-[#F5C800]" />
                   <h4 className="font-bold text-lg text-[#1A1A1A]">{fundsGoal.emoji} {fundsGoal.name}</h4>
                 </div>
                 <button onClick={() => setFundsGoal(null)} className="text-[#9B9B9B] hover:text-[#1A1A1A] transition-colors">
@@ -333,7 +333,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
               {/* Progress summary */}
               <div
                 className="relative rounded-2xl p-4 mb-5"
-                style={{ background: "rgba(245,166,35,0.06)", border: "1px solid rgba(245,166,35,0.2)" }}
+                style={{ background: "rgba(245,200,0,0.06)", border: "1px solid rgba(245,200,0,0.2)" }}
               >
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-[#6B6B6B] font-medium">Current</span>

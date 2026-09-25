@@ -51,11 +51,11 @@ const LG_CANCEL: React.CSSProperties = {
 };
 
 const LG_CONFIRM: React.CSSProperties = {
-  background: "linear-gradient(135deg, rgba(255,220,0,0.95) 0%, rgba(245,166,35,0.95) 100%)",
+  background: "linear-gradient(135deg, rgba(255,220,0,0.95) 0%, rgba(245,200,0,0.95) 100%)",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
   border: "1px solid rgba(255,220,100,0.7)",
-  boxShadow: "0 8px 24px rgba(245,166,35,0.5), inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(200,130,0,0.3)",
+  boxShadow: "0 8px 24px rgba(245,200,0,0.5), inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(200,130,0,0.3)",
   borderRadius: 16,
 };
 
@@ -74,7 +74,7 @@ function GlassShine() {
         <div style={{
           height: 2,
           width: "70%",
-          background: "linear-gradient(90deg, transparent 0%, rgba(245,166,35,0.6) 30%, rgba(255,215,0,0.8) 50%, rgba(245,166,35,0.6) 70%, transparent 100%)",
+          background: "linear-gradient(90deg, transparent 0%, rgba(245,200,0,0.6) 30%, rgba(255,215,0,0.8) 50%, rgba(245,200,0,0.6) 70%, transparent 100%)",
           borderRadius: "0 0 2px 2px",
         }} />
       </div>
@@ -178,7 +178,7 @@ export default function SettingsPage() {
               {profile && (
                 <p className="text-xs text-[#9B9B9B] mt-1">
                   Currently on{" "}
-                  <span className="text-[#F5A623] font-semibold">{PLAN_INFO[profile.plan].name}</span>
+                  <span className="text-[#F5C800] font-semibold">{PLAN_INFO[profile.plan].name}</span>
                   {" "}· Balance:{" "}
                   <span className="font-semibold text-[#1A1A1A]">£{profile.balance.toFixed(2)}</span>
                 </p>
@@ -195,8 +195,8 @@ export default function SettingsPage() {
                     disabled={isCurrent}
                     className={`relative text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
                       isCurrent
-                        ? "border-[#F5A623] bg-[rgba(245,166,35,0.06)] shadow-[0_0_0_3px_rgba(245,166,35,0.12)] cursor-default"
-                        : "border-[#F0F0F0] bg-white hover:border-[rgba(245,166,35,0.4)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.08)] cursor-pointer"
+                        ? "border-[#F5C800] bg-[rgba(245,200,0,0.06)] shadow-[0_0_0_3px_rgba(245,200,0,0.12)] cursor-default"
+                        : "border-[#F0F0F0] bg-white hover:border-[rgba(245,200,0,0.4)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.08)] cursor-pointer"
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
@@ -206,8 +206,8 @@ export default function SettingsPage() {
                           <span className="font-bold text-sm text-[#1A1A1A]">{plan.name}</span>
                           {isCurrent && (
                             <span style={{
-                              background: "linear-gradient(135deg, #FFD700, #F5A623)",
-                              color: "white",
+                              background: "linear-gradient(135deg, #FFDC46 0%, #F7CB08 48%, #EFC000 100%)",
+                              color: "#3A2E00",
                               fontSize: 12,
                               fontWeight: 700,
                               padding: "4px 12px",
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                             </span>
                           )}
                         </div>
-                        <div className={`text-xs font-semibold mt-0.5 ${isCurrent ? "text-[#F5A623]" : "text-[#6B6B6B]"}`}>
+                        <div className={`text-xs font-semibold mt-0.5 ${isCurrent ? "text-[#F5C800]" : "text-[#6B6B6B]"}`}>
                           {plan.price}
                         </div>
                       </div>
@@ -226,7 +226,7 @@ export default function SettingsPage() {
                     <ul className="space-y-1">
                       {plan.features.map((f, i) => (
                         <li key={i} className="flex items-start gap-1.5 text-xs text-[#6B6B6B]">
-                          <Check className={`w-3 h-3 mt-0.5 flex-shrink-0 ${isCurrent ? "text-[#F5A623]" : "text-[#9B9B9B]"}`} />
+                          <Check className={`w-3 h-3 mt-0.5 flex-shrink-0 ${isCurrent ? "text-[#F5C800]" : "text-[#9B9B9B]"}`} />
                           {f}
                         </li>
                       ))}
@@ -240,7 +240,7 @@ export default function SettingsPage() {
           {/* Notifications */}
           <GlassCard className="p-6">
             <h3 className="font-bold text-base text-[#1A1A1A] mb-5 flex items-center gap-2">
-              <Bell className="w-4 h-4 text-[#F5A623]" /> Notifications
+              <Bell className="w-4 h-4 text-[#F5C800]" /> Notifications
             </h3>
             <div className="space-y-3">
               {[
@@ -248,7 +248,7 @@ export default function SettingsPage() {
                 { key: "promos" as const, label: "Promotions & offers", desc: "Special deals and plan upgrades" },
                 { key: "system" as const, label: "System alerts", desc: "Security and account updates" },
               ].map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between p-3 rounded-2xl hover:bg-[rgba(245,166,35,0.04)] transition-colors">
+                <div key={key} className="flex items-center justify-between p-3 rounded-2xl hover:bg-[rgba(245,200,0,0.04)] transition-colors">
                   <div>
                     <p className="font-medium text-sm text-[#1A1A1A]">{label}</p>
                     <p className="text-xs text-[#9B9B9B]">{desc}</p>
@@ -267,7 +267,7 @@ export default function SettingsPage() {
           {/* Security */}
           <GlassCard className="p-6">
             <h3 className="font-bold text-base text-[#1A1A1A] mb-4 flex items-center gap-2">
-              <Lock className="w-4 h-4 text-[#F5A623]" /> Security
+              <Lock className="w-4 h-4 text-[#F5C800]" /> Security
             </h3>
             <GoldButton variant="outline" onClick={() => showToast("info", "Password reset email sent", "Check your inbox.")}>
               Change password
@@ -306,7 +306,7 @@ export default function SettingsPage() {
               <GlassShine />
 
               <div className="relative flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)]">
+                <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,200,0,0.3)]">
                   <CreditCard className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -323,15 +323,15 @@ export default function SettingsPage() {
 
               <div
                 className="relative rounded-2xl p-4 mb-5"
-                style={{ background: "rgba(245,166,35,0.06)", border: "1px solid rgba(245,166,35,0.2)" }}
+                style={{ background: "rgba(245,200,0,0.06)", border: "1px solid rgba(245,200,0,0.2)" }}
               >
                 <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
                   You are switching to{" "}
-                  <span className="text-[#F5A623]">{pendingPlanInfo.name}</span> plan
+                  <span className="text-[#F5C800]">{pendingPlanInfo.name}</span> plan
                 </p>
                 {pendingPrice > 0 ? (
                   <p className="text-sm text-[#6B6B6B]">
-                    <span className="font-bold text-[#F5A623]">£{pendingPrice.toFixed(2)}</span>{" "}
+                    <span className="font-bold text-[#F5C800]">£{pendingPrice.toFixed(2)}</span>{" "}
                     will be deducted from your balance
                   </p>
                 ) : (

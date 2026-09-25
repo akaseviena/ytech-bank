@@ -174,7 +174,7 @@ export default function RegisterPage() {
       >
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-          style={{ border: "1.5px solid rgba(245,166,35,0.5)", background: "rgba(255,255,255,0.9)" }}
+          style={{ border: "1.5px solid rgba(245,200,0,0.5)", background: "rgba(255,255,255,0.9)" }}
         >
           <img src="/logo.PNG" alt="Y-tech" width={40} height={40} style={{ objectFit: "contain" }} />
         </div>
@@ -188,9 +188,9 @@ export default function RegisterPage() {
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-sora font-bold transition-all duration-300 ${
                 s < step
-                  ? "gold-gradient text-white"
+                  ? "gold-gradient text-[#3A2E00]"
                   : s === step
-                  ? "border-2 border-[#F5A623] text-[#F5A623]"
+                  ? "border-2 border-[#F5C800] text-[#F5C800]"
                   : "border border-[#D0D0D0] text-[#9B9B9B]"
               }`}
             >
@@ -270,14 +270,14 @@ export default function RegisterPage() {
                         style={
                           termsWatched
                             ? {
-                                background: "linear-gradient(135deg, #FFD700 0%, #F5A623 100%)",
-                                borderColor: "#F5A623",
+                                background: "linear-gradient(135deg, #FFDC46 0%, #F5C800 100%)",
+                                borderColor: "#F5C800",
                               }
                             : { background: "#FFFFFF", borderColor: "#D0D0D0" }
                         }
                         aria-hidden="true"
                       >
-                        {termsWatched && <Check className="w-3 h-3 text-white" />}
+                        {termsWatched && <Check className="w-3 h-3 text-[#3A2E00]" />}
                       </div>
                       <span className="text-sm font-inter text-[#3A3A3A] leading-snug">
                         I agree to the{" "}
@@ -285,7 +285,7 @@ export default function RegisterPage() {
                           href="/terms"
                           target="_blank"
                           rel="noopener"
-                          className="text-[#F5A623] font-semibold hover:underline"
+                          className="text-[#F5C800] font-semibold hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Terms of Use
@@ -295,7 +295,7 @@ export default function RegisterPage() {
                           href="/privacy"
                           target="_blank"
                           rel="noopener"
-                          className="text-[#F5A623] font-semibold hover:underline"
+                          className="text-[#F5C800] font-semibold hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Privacy Policy
@@ -324,7 +324,7 @@ export default function RegisterPage() {
                 </form>
                 <p className="mt-6 text-center font-inter text-sm text-[#6B6B6B]">
                   Already have an account?{" "}
-                  <Link href="/login" className="font-semibold text-[#F5A623] hover:text-[#C8860A] transition-colors">Sign in</Link>
+                  <Link href="/login" className="font-semibold text-[#F5C800] hover:text-[#EFC000] transition-colors">Sign in</Link>
                 </p>
               </motion.div>
             )}
@@ -407,18 +407,18 @@ export default function RegisterPage() {
                       onClick={() => setSelectedPlan(plan.id)}
                       className={`relative text-left p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${
                         selectedPlan === plan.id
-                          ? "border-[#F5A623] bg-[rgba(245,166,35,0.06)] shadow-[0_0_0_3px_rgba(245,166,35,0.15)]"
-                          : "border-[#F0F0F0] bg-white hover:border-[rgba(245,166,35,0.4)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.08)]"
+                          ? "border-[#F5C800] bg-[rgba(245,200,0,0.06)] shadow-[0_0_0_3px_rgba(245,200,0,0.15)]"
+                          : "border-[#F0F0F0] bg-white hover:border-[rgba(245,200,0,0.4)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.08)]"
                       }`}
                     >
                       {plan.popular && (
-                        <span className="absolute top-2 right-2 text-[10px] font-sora font-bold px-2 py-0.5 rounded-full gold-gradient text-white">Popular</span>
+                        <span className="absolute top-2 right-2 text-[10px] font-sora font-bold px-2 py-0.5 rounded-full gold-gradient text-[#3A2E00]">Popular</span>
                       )}
                       <div className="flex items-center gap-2 mb-2">
                         {plan.emoji && <span className="text-lg">{plan.emoji}</span>}
                         <div>
                           <div className="font-sora font-bold text-sm text-[#1A1A1A]">{plan.name}</div>
-                          <div className={`text-xs font-inter font-semibold ${selectedPlan === plan.id ? "text-[#F5A623]" : "text-[#6B6B6B]"}`}>{plan.price}</div>
+                          <div className={`text-xs font-inter font-semibold ${selectedPlan === plan.id ? "text-[#F5C800]" : "text-[#6B6B6B]"}`}>{plan.price}</div>
                         </div>
                         {selectedPlan === plan.id && (
                           <div className="ml-auto w-5 h-5 rounded-full gold-gradient flex items-center justify-center">
@@ -429,7 +429,7 @@ export default function RegisterPage() {
                       <ul className="space-y-1">
                         {plan.features.map((f, i) => (
                           <li key={i} className="flex items-start gap-1.5 text-xs font-inter text-[#6B6B6B]">
-                            <Check className={`w-3 h-3 mt-0.5 flex-shrink-0 ${selectedPlan === plan.id ? "text-[#F5A623]" : "text-[#9B9B9B]"}`} />
+                            <Check className={`w-3 h-3 mt-0.5 flex-shrink-0 ${selectedPlan === plan.id ? "text-[#F5C800]" : "text-[#9B9B9B]"}`} />
                             {f}
                           </li>
                         ))}

@@ -17,7 +17,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const [profileRes, txRes, goalsRes] = await Promise.all([
-    supabase.from("profiles").select("id,first_name,last_name,balance,plan,account_number,card_frozen,created_at,currency").eq("id", user.id).single(),
+    supabase.from("profiles").select("id,first_name,last_name,balance,plan,account_number,card_frozen,card_color,created_at,currency").eq("id", user.id).single(),
     supabase
       .from("transactions")
       .select("*, sender:profiles!sender_id(id,first_name,last_name,email,avatar_url), receiver:profiles!receiver_id(id,first_name,last_name,email,avatar_url)")
@@ -64,7 +64,7 @@ export default async function DashboardPage() {
             {/* Quick stats */}
             <div className="grid grid-cols-3 gap-4">
               <Link href="/history?filter=sent" className="block">
-                <GlassCard className="p-4 cursor-pointer transition-all duration-200 hover:border-[rgba(245,166,35,0.6)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.15),_0_4px_20px_rgba(245,166,35,0.2)]">
+                <GlassCard className="p-4 cursor-pointer transition-all duration-200 hover:border-[rgba(245,200,0,0.6)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.15),_0_4px_20px_rgba(245,200,0,0.2)]">
                   <div className="w-8 h-8 rounded-xl bg-[rgba(255,59,48,0.1)] flex items-center justify-center mb-3">
                     <ArrowUpRight className="w-4 h-4 text-[#FF3B30]" />
                   </div>
@@ -73,7 +73,7 @@ export default async function DashboardPage() {
                 </GlassCard>
               </Link>
               <Link href="/history?filter=received" className="block">
-                <GlassCard className="p-4 cursor-pointer transition-all duration-200 hover:border-[rgba(245,166,35,0.6)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.15),_0_4px_20px_rgba(245,166,35,0.2)]">
+                <GlassCard className="p-4 cursor-pointer transition-all duration-200 hover:border-[rgba(245,200,0,0.6)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.15),_0_4px_20px_rgba(245,200,0,0.2)]">
                   <div className="w-8 h-8 rounded-xl bg-[rgba(52,199,89,0.1)] flex items-center justify-center mb-3">
                     <ArrowDownLeft className="w-4 h-4 text-[#34C759]" />
                   </div>
@@ -82,9 +82,9 @@ export default async function DashboardPage() {
                 </GlassCard>
               </Link>
               <Link href="/history?filter=all" className="block">
-                <GlassCard className="p-4 cursor-pointer transition-all duration-200 hover:border-[rgba(245,166,35,0.6)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.15),_0_4px_20px_rgba(245,166,35,0.2)]">
-                  <div className="w-8 h-8 rounded-xl bg-[rgba(245,166,35,0.1)] flex items-center justify-center mb-3">
-                    <Activity className="w-4 h-4 text-[#F5A623]" />
+                <GlassCard className="p-4 cursor-pointer transition-all duration-200 hover:border-[rgba(245,200,0,0.6)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.15),_0_4px_20px_rgba(245,200,0,0.2)]">
+                  <div className="w-8 h-8 rounded-xl bg-[rgba(245,200,0,0.1)] flex items-center justify-center mb-3">
+                    <Activity className="w-4 h-4 text-[#F5C800]" />
                   </div>
                   <p className="text-xs text-[#6B6B6B] mb-1">Transactions</p>
                   <p className="font-bold text-base text-[#1A1A1A]">{count}</p>

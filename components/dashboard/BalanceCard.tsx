@@ -55,7 +55,7 @@ export default function BalanceCard({ profile }: BalanceCardProps) {
               <AnimatedNumber value={profile.balance} />
             </h2>
           </div>
-          <span className="px-3 py-1 rounded-full text-xs font-bold gold-gradient text-white">
+          <span className="px-3 py-1 rounded-full text-xs font-bold gold-gradient text-[#3A2E00]">
             {PLAN_LABELS[profile.plan] ?? profile.plan}
           </span>
         </div>
@@ -69,7 +69,7 @@ export default function BalanceCard({ profile }: BalanceCardProps) {
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex items-center justify-center gap-2 py-3 rounded-xl gold-gradient text-white font-semibold text-sm shadow-[0_2px_12px_rgba(245,166,35,0.3)] cursor-pointer transition-all duration-200 hover:brightness-110 hover:shadow-[0_0_0_3px_rgba(245,166,35,0.15),_0_4px_20px_rgba(245,166,35,0.2)]"
+              className="flex items-center justify-center gap-2 py-3 rounded-xl gold-gradient text-[#3A2E00] font-semibold text-sm shadow-[0_2px_12px_rgba(245,200,0,0.3)] cursor-pointer transition-all duration-200 hover:brightness-110 hover:shadow-[0_0_0_3px_rgba(245,200,0,0.15),_0_4px_20px_rgba(245,200,0,0.2)]"
             >
               <Send className="w-4 h-4" />
               Send Money
@@ -78,7 +78,7 @@ export default function BalanceCard({ profile }: BalanceCardProps) {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-[#F5A623] bg-white text-[#F5A623] font-semibold text-sm transition-all duration-200 hover:bg-[rgba(245,166,35,0.06)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.15),_0_4px_20px_rgba(245,166,35,0.2)]"
+            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-[#F5C800] bg-white text-[#F5C800] font-semibold text-sm transition-all duration-200 hover:bg-[rgba(245,200,0,0.06)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.15),_0_4px_20px_rgba(245,200,0,0.2)]"
           >
             <Plus className="w-4 h-4" />
             Add Money

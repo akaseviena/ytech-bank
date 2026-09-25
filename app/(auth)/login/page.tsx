@@ -54,7 +54,7 @@ export default function LoginPage() {
       >
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-          style={{ border: "1.5px solid rgba(245,166,35,0.5)", background: "rgba(255,255,255,0.9)" }}
+          style={{ border: "1.5px solid rgba(245,200,0,0.5)", background: "rgba(255,255,255,0.9)" }}
         >
           <img src="/logo.PNG" alt="Y-tech" width={40} height={40} style={{ objectFit: "contain" }} />
         </div>
@@ -124,7 +124,7 @@ export default function LoginPage() {
                 <p className="mt-1 text-xs text-[#FF3B30] font-inter">{errors.password.message}</p>
               )}
               <div className="text-right mt-1">
-                <Link href="/forgot-password" className="text-xs font-inter text-[#F5A623] hover:text-[#C8860A] transition-colors">
+                <Link href="/forgot-password" className="text-xs font-inter text-[#F5C800] hover:text-[#EFC000] transition-colors">
                   Forgot password?
                 </Link>
               </div>
@@ -142,7 +142,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center font-inter text-sm text-[#6B6B6B]">
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-semibold text-[#F5A623] hover:text-[#C8860A] transition-colors">
+            <Link href="/register" className="font-semibold text-[#F5C800] hover:text-[#EFC000] transition-colors">
               Create account
             </Link>
           </p>

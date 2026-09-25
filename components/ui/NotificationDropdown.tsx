@@ -14,14 +14,14 @@ interface Props {
 }
 
 const TYPE_COLORS: Record<NotificationType, string> = {
-  transfer: "#F5A623",
+  transfer: "#F5C800",
   info: "#3B82F6",
   system: "#6B6B6B",
   promo: "#34C759",
 };
 
 const TYPE_BG: Record<NotificationType, string> = {
-  transfer: "rgba(245,166,35,0.12)",
+  transfer: "rgba(245,200,0,0.12)",
   info: "rgba(59,130,246,0.12)",
   system: "rgba(107,107,107,0.12)",
   promo: "rgba(52,199,89,0.12)",
@@ -84,14 +84,14 @@ export default function NotificationDropdown({
       {placement === "sidebar" ? (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-[rgba(245,166,35,0.06)] border border-transparent hover:border-[rgba(245,166,35,0.3)] transition-all duration-200"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-[rgba(245,200,0,0.06)] border border-transparent hover:border-[rgba(245,200,0,0.3)] transition-all duration-200"
         >
           <div className="flex items-center gap-3">
             <Bell className="w-4 h-4 text-[#6B6B6B]" />
             <span className="text-sm text-[#6B6B6B] font-medium">Notifications</span>
           </div>
           {unread > 0 && (
-            <span className="w-5 h-5 rounded-full gold-gradient text-white text-[10px] font-bold flex items-center justify-center">
+            <span className="w-5 h-5 rounded-full gold-gradient text-[#3A2E00] text-[10px] font-bold flex items-center justify-center">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
@@ -104,7 +104,7 @@ export default function NotificationDropdown({
           <div
             className={`p-2 rounded-xl transition-all duration-200 ${
               open
-                ? "gold-gradient text-white shadow-[0_2px_8px_rgba(245,166,35,0.3)]"
+                ? "gold-gradient text-[#3A2E00] shadow-[0_2px_8px_rgba(245,200,0,0.3)]"
                 : "text-[#9B9B9B]"
             }`}
           >
@@ -112,13 +112,13 @@ export default function NotificationDropdown({
           </div>
           {unread > 0 && (
             <span
-              className="absolute top-0 right-0 w-4 h-4 rounded-full gold-gradient text-white text-[9px] font-bold flex items-center justify-center"
+              className="absolute top-0 right-0 w-4 h-4 rounded-full gold-gradient text-[#3A2E00] text-[9px] font-bold flex items-center justify-center"
               style={{ transform: "translate(25%, -10%)" }}
             >
               {unread > 9 ? "9+" : unread}
             </span>
           )}
-          <span className={`text-[10px] font-semibold ${open ? "text-[#F5A623]" : "text-[#9B9B9B]"}`}>
+          <span className={`text-[10px] font-semibold ${open ? "text-[#F5C800]" : "text-[#9B9B9B]"}`}>
             Alerts
           </span>
         </button>
@@ -150,7 +150,7 @@ export default function NotificationDropdown({
               <div style={{
                 height: 2,
                 width: "70%",
-                background: "linear-gradient(90deg, transparent 0%, rgba(245,166,35,0.6) 30%, rgba(255,215,0,0.8) 50%, rgba(245,166,35,0.6) 70%, transparent 100%)",
+                background: "linear-gradient(90deg, transparent 0%, rgba(245,200,0,0.6) 30%, rgba(255,215,0,0.8) 50%, rgba(245,200,0,0.6) 70%, transparent 100%)",
                 borderRadius: "0 0 2px 2px",
               }} />
             </div>
@@ -179,7 +179,7 @@ export default function NotificationDropdown({
                 {unread > 0 && (
                   <button
                     onClick={markAll}
-                    className="text-xs font-bold text-[#F5A623] hover:text-[#C8860A] transition-colors"
+                    className="text-xs font-bold text-[#F5C800] hover:text-[#EFC000] transition-colors"
                   >
                     Mark all as read
                   </button>
@@ -206,7 +206,7 @@ export default function NotificationDropdown({
                     <button
                       key={n.id}
                       onClick={() => markOne(n.id)}
-                      className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[rgba(245,166,35,0.05)]"
+                      className="w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[rgba(245,200,0,0.05)]"
                     >
                       {/* Unread dot */}
                       <div className="flex-shrink-0 mt-1">

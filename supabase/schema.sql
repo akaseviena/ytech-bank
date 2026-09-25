@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   account_number TEXT UNIQUE NOT NULL,
   currency TEXT NOT NULL DEFAULT 'GBP',
   card_frozen BOOLEAN DEFAULT FALSE,
+  card_color TEXT NOT NULL DEFAULT 'yellow' CHECK (card_color IN ('yellow', 'blue')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

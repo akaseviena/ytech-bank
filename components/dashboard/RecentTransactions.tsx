@@ -18,7 +18,7 @@ export default function RecentTransactions({ transactions, userId }: RecentTrans
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-base text-[#1A1A1A]">Recent Transactions</h3>
-        <Link href="/history" className="text-sm text-[#F5A623] hover:text-[#C8860A] transition-colors font-semibold">
+        <Link href="/history" className="text-sm text-[#F5C800] hover:text-[#EFC000] transition-colors font-semibold">
           See all
         </Link>
       </div>
@@ -41,7 +41,7 @@ export default function RecentTransactions({ transactions, userId }: RecentTrans
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="flex items-center gap-3 p-3 rounded-xl transition-all duration-200 cursor-default border border-transparent hover:border-[rgba(245,166,35,0.4)] hover:bg-[rgba(245,166,35,0.03)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.08)]"
+                className="flex items-center gap-3 p-3 rounded-xl transition-all duration-200 cursor-default border border-transparent hover:border-[rgba(245,200,0,0.4)] hover:bg-[rgba(245,200,0,0.03)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.08)]"
               >
                 <div
                   className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg flex-shrink-0"

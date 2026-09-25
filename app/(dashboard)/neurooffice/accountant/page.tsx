@@ -42,10 +42,10 @@ export default function AccountantPage() {
       {isAutoTab ? (
         <div
           className="flex flex-col items-center justify-center py-8 rounded-2xl text-center"
-          style={{ background: "rgba(245,166,35,0.06)", border: "1px solid rgba(245,166,35,0.2)" }}
+          style={{ background: "rgba(245,200,0,0.06)", border: "1px solid rgba(245,200,0,0.2)" }}
         >
           <div
-            className="w-12 h-12 rounded-2xl gold-gradient flex items-center justify-center mb-3 shadow-[0_2px_8px_rgba(245,166,35,0.3)]"
+            className="w-12 h-12 rounded-2xl gold-gradient flex items-center justify-center mb-3 shadow-[0_2px_8px_rgba(245,200,0,0.3)]"
           >
             <BarChart3 className="w-6 h-6 text-white" />
           </div>

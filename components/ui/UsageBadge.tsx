@@ -24,8 +24,8 @@ export default function UsageBadge({ variant = "sidebar" }: Props) {
     borderColor = "rgba(255,59,48,0.25)";
     extraShadow = ", 0 0 12px rgba(255,59,48,0.3)";
   } else if (pct >= 0.8) {
-    textColor = "#F5A623"; // 80-99%: gold warning
-    borderColor = "rgba(245,166,35,0.3)";
+    textColor = "#F5C800"; // 80-99%: gold warning
+    borderColor = "rgba(245,200,0,0.3)";
   }
 
   const isMobile = variant === "mobile-fixed";

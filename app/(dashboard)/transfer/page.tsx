@@ -27,9 +27,9 @@ function RecipientRow({ u, onSelect }: { u: Profile; onSelect: () => void }) {
     <motion.button
       whileTap={{ scale: 0.98 }}
       onClick={onSelect}
-      className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-[rgba(245,166,35,0.06)] transition-colors text-left"
+      className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-[rgba(245,200,0,0.06)] transition-colors text-left"
     >
-      <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-white text-sm font-sora font-bold flex-shrink-0">
+      <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-[#3A2E00] text-sm font-sora font-bold flex-shrink-0">
         {u.avatar_url ? <img src={u.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="" /> : getInitials(u.first_name, u.last_name)}
       </div>
       <div className="flex-1 min-w-0">
@@ -200,10 +200,10 @@ export default function TransferPage() {
             return (
               <div key={label} className="flex items-center gap-2 flex-1">
                 <div className={`flex items-center gap-2 ${s <= step ? "flex-1" : "flex-1"}`}>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sora font-bold flex-shrink-0 transition-all ${s < step ? "gold-gradient text-white" : s === step ? "border-2 border-[#F5A623] text-[#F5A623]" : "border border-[#D0D0D0] text-[#9B9B9B]"}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-sora font-bold flex-shrink-0 transition-all ${s < step ? "gold-gradient text-[#3A2E00]" : s === step ? "border-2 border-[#F5C800] text-[#F5C800]" : "border border-[#D0D0D0] text-[#9B9B9B]"}`}>
                     {s < step ? <Check className="w-3.5 h-3.5" /> : s}
                   </div>
-                  <span className={`text-xs font-inter hidden sm:block ${s === step ? "text-[#F5A623] font-semibold" : "text-[#9B9B9B]"}`}>{label}</span>
+                  <span className={`text-xs font-inter hidden sm:block ${s === step ? "text-[#F5C800] font-semibold" : "text-[#9B9B9B]"}`}>{label}</span>
                 </div>
                 {i < 2 && <div className={`flex-1 h-0.5 ${s < step ? "gold-gradient" : "bg-[#E5E5E5]"}`} />}
               </div>
@@ -274,8 +274,8 @@ export default function TransferPage() {
                 </button>
 
                 {recipient && (
-                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-[rgba(245,166,35,0.06)] border border-[rgba(245,166,35,0.2)] mb-6">
-                    <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-white text-sm font-sora font-bold flex-shrink-0">
+                  <div className="flex items-center gap-3 p-3 rounded-2xl bg-[rgba(245,200,0,0.06)] border border-[rgba(245,200,0,0.2)] mb-6">
+                    <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-[#3A2E00] text-sm font-sora font-bold flex-shrink-0">
                       {getInitials(recipient.first_name, recipient.last_name)}
                     </div>
                     <div>
@@ -309,7 +309,7 @@ export default function TransferPage() {
                       key={a}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setAmount(String(a))}
-                      className={`px-4 py-2 rounded-xl text-sm font-inter font-semibold transition-all ${amount === String(a) ? "gold-gradient text-white" : "border border-[rgba(245,166,35,0.3)] text-[#F5A623] hover:bg-[rgba(245,166,35,0.06)]"}`}
+                      className={`px-4 py-2 rounded-xl text-sm font-inter font-semibold transition-all ${amount === String(a) ? "gold-gradient text-[#3A2E00]" : "border border-[rgba(245,200,0,0.3)] text-[#F5C800] hover:bg-[rgba(245,200,0,0.06)]"}`}
                     >
                       £{a}
                     </motion.button>
@@ -361,7 +361,7 @@ export default function TransferPage() {
                     { label: "Category", value: `${CATEGORY_INFO[category].emoji} ${CATEGORY_INFO[category].label}` },
                     ...(description ? [{ label: "Note", value: description }] : []),
                   ].map(({ label, value, bold, gold }) => (
-                    <div key={label} className="flex justify-between items-center p-3 rounded-2xl bg-[rgba(245,166,35,0.04)] border border-[rgba(245,166,35,0.1)]">
+                    <div key={label} className="flex justify-between items-center p-3 rounded-2xl bg-[rgba(245,200,0,0.04)] border border-[rgba(245,200,0,0.1)]">
                       <span className="font-inter text-sm text-[#6B6B6B]">{label}</span>
                       <span className={`font-inter text-sm ${bold ? "font-bold text-lg" : "font-medium"} ${gold ? "gold-text" : "text-[#1A1A1A]"}`}>{value}</span>
                     </div>

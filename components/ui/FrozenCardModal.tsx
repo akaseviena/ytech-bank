@@ -48,7 +48,7 @@ function GlassShine() {
         <div style={{
           height: 2,
           width: "70%",
-          background: "linear-gradient(90deg, transparent 0%, rgba(245,166,35,0.6) 30%, rgba(255,215,0,0.8) 50%, rgba(245,166,35,0.6) 70%, transparent 100%)",
+          background: "linear-gradient(90deg, transparent 0%, rgba(245,200,0,0.6) 30%, rgba(255,215,0,0.8) 50%, rgba(245,200,0,0.6) 70%, transparent 100%)",
           borderRadius: "0 0 2px 2px",
         }} />
       </div>

@@ -5,9 +5,9 @@
 @tailwind utilities;
 
 :root {
-  --gold-from: #FFD700;
-  --gold-via: #F5A623;
-  --gold-to: #C8860A;
+  --gold-from: #FFDC46;
+  --gold-via: #F7CB08;
+  --gold-to: #EFC000;
   --background: #FFFFFF;
   --card-bg: #FFFFFF;
   --text-primary: #1A1A1A;
@@ -16,8 +16,8 @@
   --error: #FF3B30;
   --card-border: #F0F0F0;
   --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  --hover-border: rgba(245, 166, 35, 0.6);
-  --hover-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15), 0 4px 20px rgba(245, 166, 35, 0.2);
+  --hover-border: rgba(245, 200, 0, 0.6);
+  --hover-shadow: 0 0 0 3px rgba(245, 200, 0, 0.15), 0 4px 20px rgba(245, 200, 0, 0.2);
 }
 
 * {
@@ -52,22 +52,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .glass-card:hover {
-  border-color: rgba(245, 166, 35, 0.6);
-  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15), 0 4px 20px rgba(245, 166, 35, 0.2);
+  border-color: rgba(245, 200, 0, 0.6);
+  box-shadow: 0 0 0 3px rgba(245, 200, 0, 0.15), 0 4px 20px rgba(245, 200, 0, 0.2);
 }
 
 /* Gold-accented card (balance, virtual card) */
 .gold-glass {
   background: #FFFFFF;
-  border: 1px solid rgba(245, 166, 35, 0.3);
+  border: 1px solid rgba(245, 200, 0, 0.3);
   border-radius: 20px;
-  box-shadow: 0 2px 12px rgba(245, 166, 35, 0.08);
+  box-shadow: 0 2px 12px rgba(245, 200, 0, 0.08);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .gold-glass:hover {
-  border-color: rgba(245, 166, 35, 0.6);
-  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15), 0 4px 20px rgba(245, 166, 35, 0.2);
+  border-color: rgba(245, 200, 0, 0.6);
+  box-shadow: 0 0 0 3px rgba(245, 200, 0, 0.15), 0 4px 20px rgba(245, 200, 0, 0.2);
 }
 
 /* Reusable hover glow for non-card interactive elements */
@@ -76,13 +76,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hover-glow:hover {
-  border-color: rgba(245, 166, 35, 0.6) !important;
-  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15), 0 4px 20px rgba(245, 166, 35, 0.2);
+  border-color: rgba(245, 200, 0, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(245, 200, 0, 0.15), 0 4px 20px rgba(245, 200, 0, 0.2);
 }
 
 /* ─── Gold gradient text ─────────────────────────────── */
 .gold-text {
-  background: linear-gradient(135deg, #FFD700 0%, #F5A623 50%, #C8860A 100%);
+  background: linear-gradient(135deg, #FFDC46 0%, #F7CB08 48%, #EFC000 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -90,7 +90,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ─── Gold gradient background ───────────────────────── */
 .gold-gradient {
-  background: linear-gradient(135deg, #FFD700 0%, #F5A623 50%, #C8860A 100%);
+  background: linear-gradient(135deg, #FFDC46 0%, #F7CB08 48%, #EFC000 100%);
 }
 
 /* ─── Page background ────────────────────────────────── */
@@ -117,8 +117,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .input-field:focus {
-    border-color: #F5A623;
-    box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.15);
+    border-color: #F5C800;
+    box-shadow: 0 0 0 3px rgba(245, 200, 0, 0.15);
     background: #FFFFFF;
   }
 
@@ -142,11 +142,11 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(245, 166, 35, 0.3);
+  background: rgba(245, 200, 0, 0.3);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 166, 35, 0.6);
+  background: rgba(245, 200, 0, 0.6);
 }
 
 /* ─── Loading skeleton ───────────────────────────────── */

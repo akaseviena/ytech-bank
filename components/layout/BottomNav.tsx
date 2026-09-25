@@ -46,7 +46,7 @@ export default function BottomNav({ notifications, userId }: BottomNavProps) {
                 <div
                   className={`p-2 rounded-xl transition-all duration-200 ${
                     active
-                      ? "gold-gradient text-white shadow-[0_2px_8px_rgba(245,166,35,0.3)]"
+                      ? "gold-gradient text-[#3A2E00] shadow-[0_2px_8px_rgba(245,200,0,0.3)]"
                       : "text-[#9B9B9B]"
                   }`}
                 >
@@ -54,7 +54,7 @@ export default function BottomNav({ notifications, userId }: BottomNavProps) {
                 </div>
                 <span
                   className={`text-[10px] font-semibold ${
-                    active ? "text-[#F5A623]" : "text-[#9B9B9B]"
+                    active ? "text-[#F5C800]" : "text-[#9B9B9B]"
                   }`}
                 >
                   {label}

@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             Contact:{" "}
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5A623" }}>
+            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
               info@ytechfinance.com
             </a>
           </p>
@@ -139,7 +139,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             Email{" "}
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5A623" }}>
+            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
               info@ytechfinance.com
             </a>
             . We respond within one month, free of charge.
@@ -158,12 +158,12 @@ export default function PrivacyPage() {
         <Section id="complaining" title="Complaining">
           <p>
             Tell us first at{" "}
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5A623" }}>
+            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
               info@ytechfinance.com
             </a>
             . You can also complain to the Information Commissioner&apos;s Office: Wycliffe House,
             Water Lane, Wilmslow, Cheshire SK9 5AF ·{" "}
-            <a href="https://ico.org.uk" target="_blank" rel="noopener" style={{ color: "#F5A623" }}>
+            <a href="https://ico.org.uk" target="_blank" rel="noopener" style={{ color: "#F5C800" }}>
               ico.org.uk
             </a>{" "}
             · 0303 123 1113

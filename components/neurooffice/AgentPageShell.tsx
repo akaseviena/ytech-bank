@@ -54,16 +54,16 @@ function LimitCard({ resetIn }: { resetIn: string }) {
           background: "rgba(255,255,255,0.85)",
           backdropFilter: "blur(40px) saturate(180%)",
           WebkitBackdropFilter: "blur(40px) saturate(180%)",
-          border: "1.5px solid rgba(245,166,35,0.35)",
+          border: "1.5px solid rgba(245,200,0,0.35)",
           boxShadow: "0 4px 24px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9)",
         }}
       >
         <div className="flex flex-col items-center text-center gap-3">
           <div
             className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{ background: "rgba(245,166,35,0.1)", border: "1px solid rgba(245,166,35,0.25)" }}
+            style={{ background: "rgba(245,200,0,0.1)", border: "1px solid rgba(245,200,0,0.25)" }}
           >
-            <Clock className="w-6 h-6 text-[#F5A623]" />
+            <Clock className="w-6 h-6 text-[#F5C800]" />
           </div>
           <div>
             <p className="font-bold text-[#1A1A1A] mb-1.5">
@@ -78,7 +78,7 @@ function LimitCard({ resetIn }: { resetIn: string }) {
           </div>
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-            style={{ background: "rgba(245,166,35,0.1)", color: "#F5A623" }}
+            style={{ background: "rgba(245,200,0,0.1)", color: "#F5C800" }}
           >
             <Clock className="w-3.5 h-3.5" />
             Resets in {resetIn}
@@ -291,7 +291,7 @@ export default function AgentPageShell({
         <div className="flex items-center justify-end lg:justify-between mb-6">
           <Link
             href="/neurooffice"
-            className="hidden lg:inline-flex items-center gap-1.5 text-sm text-[#6B6B6B] hover:text-[#F5A623] transition-colors font-semibold"
+            className="hidden lg:inline-flex items-center gap-1.5 text-sm text-[#6B6B6B] hover:text-[#F5C800] transition-colors font-semibold"
           >
             <ArrowLeft className="w-4 h-4" />
             NeuroOffice
@@ -304,7 +304,7 @@ export default function AgentPageShell({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
                 onClick={() => setShowClearConfirm(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5A623] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,166,35,0.3)] hover:bg-[rgba(245,166,35,0.04)]"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)]"
               >
                 <Plus className="w-3.5 h-3.5" />
                 New conversation
@@ -317,7 +317,7 @@ export default function AgentPageShell({
         <div className="flex items-center gap-4 mb-6">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
-            style={{ background: "rgba(245,166,35,0.1)", border: "1.5px solid rgba(245,166,35,0.3)" }}
+            style={{ background: "rgba(245,200,0,0.1)", border: "1.5px solid rgba(245,200,0,0.3)" }}
           >
             {emoji}
           </div>
@@ -331,7 +331,7 @@ export default function AgentPageShell({
         {disclaimer && (
           <div
             className="mb-6 p-4 rounded-2xl text-sm text-[#6B6B6B] leading-relaxed"
-            style={{ background: "rgba(245,166,35,0.08)", border: "1px solid rgba(245,166,35,0.25)" }}
+            style={{ background: "rgba(245,200,0,0.08)", border: "1px solid rgba(245,200,0,0.25)" }}
           >
             {disclaimer}
           </div>
@@ -388,11 +388,11 @@ export default function AgentPageShell({
                 >
                   {msg.role === "user" ? (
                     <div
-                      className="max-w-[80%] px-4 py-3 text-sm text-white leading-relaxed"
+                      className="max-w-[80%] px-4 py-3 text-sm text-[#3A2E00] leading-relaxed"
                       style={{
-                        background: "linear-gradient(135deg, #FFD700, #F5A623)",
+                        background: "linear-gradient(135deg, #FFDC46 0%, #F7CB08 48%, #EFC000 100%)",
                         borderRadius: "18px 18px 4px 18px",
-                        boxShadow: "0 2px 12px rgba(245,166,35,0.3)",
+                        boxShadow: "0 2px 12px rgba(245,200,0,0.3)",
                       }}
                     >
                       <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -403,7 +403,7 @@ export default function AgentPageShell({
                       style={{
                         background: "#FFFFFF",
                         border: "1px solid #F0F0F0",
-                        borderLeft: "3px solid #F5A623",
+                        borderLeft: "3px solid #F5C800",
                         borderRadius: "4px 18px 18px 18px",
                         boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
                       }}
@@ -412,10 +412,10 @@ export default function AgentPageShell({
                         className="flex items-center justify-between px-4 py-2.5"
                         style={{ borderBottom: "1px solid #F5F5F5" }}
                       >
-                        <span className="text-xs font-bold text-[#F5A623]">{name}</span>
+                        <span className="text-xs font-bold text-[#F5C800]">{name}</span>
                         <button
                           onClick={() => handleCopy(msg.content, i)}
-                          className="flex items-center gap-1 text-[11px] font-semibold text-[#9B9B9B] hover:text-[#F5A623] transition-colors"
+                          className="flex items-center gap-1 text-[11px] font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors"
                         >
                           {copiedIdx === i ? (
                             <><Check className="w-3 h-3 text-[#34C759]" /> Copied!</>
@@ -443,13 +443,13 @@ export default function AgentPageShell({
                     <div
                       className="px-4 py-3 flex items-center gap-2"
                       style={{
-                        background: "rgba(245,166,35,0.06)",
-                        border: "1px solid rgba(245,166,35,0.2)",
+                        background: "rgba(245,200,0,0.06)",
+                        border: "1px solid rgba(245,200,0,0.2)",
                         borderRadius: "4px 18px 18px 18px",
                       }}
                     >
-                      <Loader2 className="w-4 h-4 text-[#F5A623] animate-spin flex-shrink-0" />
-                      <span className="text-sm font-semibold text-[#F5A623]">Thinking…</span>
+                      <Loader2 className="w-4 h-4 text-[#F5C800] animate-spin flex-shrink-0" />
+                      <span className="text-sm font-semibold text-[#F5C800]">Thinking…</span>
                     </div>
                   </motion.div>
                 )}
@@ -543,7 +543,7 @@ export default function AgentPageShell({
               <div className="text-center mb-5">
                 <div
                   className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl"
-                  style={{ background: "rgba(245,166,35,0.1)" }}
+                  style={{ background: "rgba(245,200,0,0.1)" }}
                 >
                   ✨
                 </div>

@@ -28,12 +28,12 @@ export default function CopywriterPage() {
           <label
             key={m}
             className="flex items-center gap-2 cursor-pointer select-none text-sm font-semibold"
-            style={{ color: mode === m ? "#F5A623" : "#6B6B6B" }}
+            style={{ color: mode === m ? "#F5C800" : "#6B6B6B" }}
           >
             <div
               onClick={() => setMode(m)}
               className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer"
-              style={{ borderColor: mode === m ? "#F5A623" : "#D0D0D0" }}
+              style={{ borderColor: mode === m ? "#F5C800" : "#D0D0D0" }}
             >
               {mode === m && <div className="w-2 h-2 rounded-full gold-gradient" />}
             </div>

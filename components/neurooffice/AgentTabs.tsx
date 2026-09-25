@@ -23,7 +23,7 @@ export default function AgentTabs({ tabs, active, onChange }: AgentTabsProps) {
             className="flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all duration-200"
             style={
               active === tab.id
-                ? { background: "#FFFFFF", color: "#F5A623", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }
+                ? { background: "#FFFFFF", color: "#F5C800", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }
                 : { color: "#6B6B6B" }
             }
           >

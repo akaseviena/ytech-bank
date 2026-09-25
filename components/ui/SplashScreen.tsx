@@ -25,9 +25,9 @@ export default function SplashScreen() {
           <motion.div
             animate={{
               boxShadow: [
-                "0 0 20px rgba(245,166,35,0.3)",
-                "0 0 60px rgba(245,166,35,0.9), 0 0 120px rgba(245,166,35,0.3)",
-                "0 0 20px rgba(245,166,35,0.3)",
+                "0 0 20px rgba(245,200,0,0.3)",
+                "0 0 60px rgba(245,200,0,0.9), 0 0 120px rgba(245,200,0,0.3)",
+                "0 0 20px rgba(245,200,0,0.3)",
               ],
               scale: [1, 1.05, 1],
             }}
@@ -36,7 +36,7 @@ export default function SplashScreen() {
             style={{
               width: 120,
               height: 120,
-              border: "2px solid rgba(245,166,35,0.6)",
+              border: "2px solid rgba(245,200,0,0.6)",
               background: "#FFFFFF",
             }}
           >
@@ -73,7 +73,7 @@ export default function SplashScreen() {
           {/* Progress bar */}
           <motion.div
             className="absolute bottom-12 left-1/2 -translate-x-1/2"
-            style={{ width: 200, height: 3, background: "rgba(245,166,35,0.15)", borderRadius: 99 }}
+            style={{ width: 200, height: 3, background: "rgba(245,200,0,0.15)", borderRadius: 99 }}
           >
             <motion.div
               initial={{ width: "0%" }}
@@ -81,7 +81,7 @@ export default function SplashScreen() {
               transition={{ duration: 2.5, ease: "easeInOut" }}
               style={{
                 height: "100%",
-                background: "linear-gradient(to right, #FFD700, #F5A623, #C8860A)",
+                background: "linear-gradient(to right, #FFDC46, #F7CB08, #EFC000)",
                 borderRadius: 99,
               }}
             />

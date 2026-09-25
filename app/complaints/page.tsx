@@ -20,7 +20,7 @@ export default function ComplaintsPage() {
 
         <Section id="tell-us" title="Tell us">
           <p>
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5A623" }}>
+            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
               info@ytechfinance.com
             </a>
           </p>
@@ -58,7 +58,7 @@ export default function ComplaintsPage() {
           <p>
             If your complaint is about how we handle personal data and our answer does not satisfy
             you:{" "}
-            <a href="https://ico.org.uk" target="_blank" rel="noopener" style={{ color: "#F5A623" }}>
+            <a href="https://ico.org.uk" target="_blank" rel="noopener" style={{ color: "#F5C800" }}>
               ico.org.uk
             </a>{" "}
             · 0303 123 1113

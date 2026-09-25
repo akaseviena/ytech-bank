@@ -25,12 +25,12 @@ export function LegalHeader() {
     >
       <Link href="/" style={{ textDecoration: "none" }}>
         <span style={{ fontWeight: 800, fontSize: 20, color: "#1A1A1A" }}>
-          Y<span style={{ color: "#F5A623" }}>-tech</span>
+          Y<span style={{ color: "#F5C800" }}>-tech</span>
         </span>
       </Link>
       <Link
         href="/login"
-        style={{ color: "#F5A623", textDecoration: "none", fontSize: 14, fontWeight: 600 }}
+        style={{ color: "#F5C800", textDecoration: "none", fontSize: 14, fontWeight: 600 }}
       >
         Back to app
       </Link>
@@ -63,7 +63,7 @@ export function LegalFooter({ current }: { current?: string }) {
             key={href}
             href={href}
             style={{
-              color: href === current ? "#F5A623" : "#6B6B6B",
+              color: href === current ? "#F5C800" : "#6B6B6B",
               textDecoration: "none",
               fontWeight: href === current ? 700 : 400,
             }}
@@ -136,7 +136,7 @@ export function Table({ rows }: { rows: string[][] }) {
                   background: "#F9F6F0",
                   color: "#1A1A1A",
                   fontWeight: 700,
-                  borderBottom: "2px solid rgba(245,166,35,0.3)",
+                  borderBottom: "2px solid rgba(245,200,0,0.3)",
                   whiteSpace: "nowrap",
                 }}
               >

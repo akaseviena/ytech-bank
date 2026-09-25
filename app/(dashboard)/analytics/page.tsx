@@ -134,7 +134,7 @@ export default function AnalyticsPage() {
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${period === p ? "gold-gradient text-white shadow-[0_2px_8px_rgba(245,166,35,0.3)]" : "border border-[#F0F0F0] bg-white text-[#6B6B6B] hover:text-[#F5A623] hover:border-[rgba(245,166,35,0.4)]"}`}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${period === p ? "gold-gradient text-[#3A2E00] shadow-[0_2px_8px_rgba(245,200,0,0.3)]" : "border border-[#F0F0F0] bg-white text-[#6B6B6B] hover:text-[#F5C800] hover:border-[rgba(245,200,0,0.4)]"}`}
             >
               {PERIOD_LABELS[p]}
             </button>
@@ -143,7 +143,7 @@ export default function AnalyticsPage() {
 
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-10 h-10 rounded-full border-2 border-[#F5A623] border-t-transparent animate-spin" />
+            <div className="w-10 h-10 rounded-full border-2 border-[#F5C800] border-t-transparent animate-spin" />
           </div>
         ) : (
           <div className="space-y-6">
@@ -153,7 +153,7 @@ export default function AnalyticsPage() {
                 { label: "Total Spent", value: formatCurrency(totalSent), icon: ArrowUpRight, color: "#FF3B30" },
                 { label: "Total Received", value: formatCurrency(totalReceived), icon: ArrowDownLeft, color: "#34C759" },
                 { label: "Net Flow", value: formatCurrency(netFlow), icon: netFlow >= 0 ? TrendingUp : TrendingDown, color: netFlow >= 0 ? "#34C759" : "#FF3B30" },
-                { label: "Transactions", value: transactions.length.toString(), icon: Activity, color: "#F5A623" },
+                { label: "Transactions", value: transactions.length.toString(), icon: Activity, color: "#F5C800" },
               ].map(({ label, value, icon: Icon, color }) => (
                 <GlassCard key={label} hover className="p-4">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: `${color}15` }}>
@@ -212,15 +212,15 @@ export default function AnalyticsPage() {
                   <AreaChart data={balanceData}>
                     <defs>
                       <linearGradient id="balanceGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#F5A623" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#F5A623" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#F5C800" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#F5C800" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9B9B9B" }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10, fill: "#9B9B9B" }} tickFormatter={(v) => `£${v}`} />
                     <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                    <Area type="monotone" dataKey="balance" stroke="#F5A623" strokeWidth={2} fill="url(#balanceGrad)" />
+                    <Area type="monotone" dataKey="balance" stroke="#F5C800" strokeWidth={2} fill="url(#balanceGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </GlassCard>

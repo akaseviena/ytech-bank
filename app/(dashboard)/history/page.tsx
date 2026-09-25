@@ -13,7 +13,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { CATEGORY_INFO, type TransactionCategory, type Transaction } from "@/types";
 
 const PAGE_SIZE = 20;
-const STATUS_COLORS = { completed: "#34C759", pending: "#F5A623", failed: "#FF3B30" };
+const STATUS_COLORS = { completed: "#34C759", pending: "#F5C800", failed: "#FF3B30" };
 
 function HistoryContent() {
   const searchParams = useSearchParams();
@@ -137,7 +137,7 @@ function HistoryContent() {
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`px-3 py-2 rounded-xl text-xs font-inter font-semibold transition-all capitalize ${filter === f ? "gold-gradient text-white" : "border border-[rgba(245,166,35,0.3)] text-[#6B6B6B] hover:text-[#F5A623]"}`}
+                  className={`px-3 py-2 rounded-xl text-xs font-inter font-semibold transition-all capitalize ${filter === f ? "gold-gradient text-[#3A2E00]" : "border border-[rgba(245,200,0,0.3)] text-[#6B6B6B] hover:text-[#F5C800]"}`}
                 >
                   {f}
                 </button>
@@ -183,7 +183,7 @@ function HistoryContent() {
                 <GlassCard className="overflow-hidden">
                   <button
                     onClick={() => setExpandedId(expanded ? null : tx.id)}
-                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-[rgba(245,166,35,0.03)] transition-colors"
+                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-[rgba(245,200,0,0.03)] transition-colors"
                   >
                     <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: `${catInfo.color}18` }}>
                       {catInfo.emoji}
@@ -213,7 +213,7 @@ function HistoryContent() {
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="overflow-hidden border-t border-[rgba(245,166,35,0.1)]"
+                        className="overflow-hidden border-t border-[rgba(245,200,0,0.1)]"
                       >
                         <div className="p-4 grid grid-cols-2 gap-3">
                           {[
@@ -244,7 +244,7 @@ function HistoryContent() {
 
           {loading && (
             <div className="flex justify-center py-8">
-              <div className="w-8 h-8 rounded-full border-2 border-[#F5A623] border-t-transparent animate-spin" />
+              <div className="w-8 h-8 rounded-full border-2 border-[#F5C800] border-t-transparent animate-spin" />
             </div>
           )}
 
@@ -263,7 +263,7 @@ export default function HistoryPage() {
     <PageTransition>
       <Suspense fallback={
         <div className="p-6 flex justify-center pt-20">
-          <div className="w-8 h-8 rounded-full border-2 border-[#F5A623] border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-2 border-[#F5C800] border-t-transparent animate-spin" />
         </div>
       }>
         <HistoryContent />

@@ -44,7 +44,7 @@ export default function TermsPage() {
         <Section id="your-account" title="Your account">
           <p>
             You are responsible for keeping your password safe. Tell us immediately at{" "}
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5A623" }}>
+            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
               info@ytechfinance.com
             </a>{" "}
             if you think someone else has access to your account.
@@ -102,7 +102,7 @@ export default function TermsPage() {
         <Section id="ending-it" title="Ending it">
           <p>
             You can close your account at any time by emailing{" "}
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5A623" }}>
+            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
               info@ytechfinance.com
             </a>
             . We may end your access to the prototype at any time.
@@ -117,7 +117,7 @@ export default function TermsPage() {
           </p>
           <p>
             Contact:{" "}
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5A623" }}>
+            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
               info@ytechfinance.com
             </a>
           </p>

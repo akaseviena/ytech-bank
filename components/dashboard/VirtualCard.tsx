@@ -12,12 +12,60 @@ interface VirtualCardProps {
   profile: Profile;
 }
 
+const CARD_STYLES = {
+  yellow: {
+    background: "linear-gradient(135deg, #FFDC46 0%, #F7CB08 48%, #EFC000 100%)",
+    border: "1px solid rgba(58,46,0,0.12)",
+    boxShadow: "0 4px 20px rgba(245,200,0,0.35)",
+    text: "#3A2E00",
+    textMuted: "rgba(58,46,0,0.65)",
+    logoOpacity: 0.85,
+  },
+  blue: {
+    background: "linear-gradient(135deg, #79D6FF 0%, #28A8EF 52%, #0E85CE 100%)",
+    border: "1px solid rgba(255,255,255,0.25)",
+    boxShadow: "0 4px 20px rgba(14,133,206,0.35)",
+    text: "#FFFFFF",
+    textMuted: "rgba(255,255,255,0.75)",
+    logoOpacity: 1,
+  },
+} as const;
+
 export default function VirtualCard({ profile }: VirtualCardProps) {
   const [showNumber, setShowNumber] = useState(false);
   const [showCvv, setShowCvv] = useState(false);
   const [frozen, setFrozen] = useState(profile.card_frozen);
   const [freezing, setFreezing] = useState(false);
+  const [cardColor, setCardColor] = useState<"yellow" | "blue">(profile.card_color ?? "yellow");
+  const [savingColor, setSavingColor] = useState(false);
   const { showToast } = useToast();
+  const style = CARD_STYLES[cardColor];
+
+  async function changeCardColor(next: "yellow" | "blue") {
+    if (next === cardColor || savingColor) return;
+    const prev = cardColor;
+    setCardColor(next); // optimistic
+    setSavingColor(true);
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ card_color: next })
+      .eq("id", profile.id)
+      .select("card_color")
+      .single();
+
+    setSavingColor(false);
+
+    if (error || !data) {
+      setCardColor(prev); // revert the optimistic flip
+      console.error("[VirtualCard] card color change failed:", error);
+      showToast("error", "Couldn't update card color", error?.message ?? "Please try again.");
+      return;
+    }
+
+    setCardColor(data.card_color as "yellow" | "blue");
+  }
 
   async function toggleFreeze() {
     if (freezing) return;
@@ -72,9 +120,9 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
         transition={{ delay: 0.1 }}
         className="relative overflow-hidden rounded-[20px] p-6"
         style={{
-          background: "linear-gradient(135deg, #FFFDF5 0%, #FFF8E7 60%, #FFFDF5 100%)",
-          border: "1px solid rgba(245,166,35,0.25)",
-          boxShadow: "0 4px 20px rgba(245,166,35,0.1)",
+          background: style.background,
+          border: style.border,
+          boxShadow: style.boxShadow,
           minHeight: 180,
         }}
       >
@@ -97,26 +145,36 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
         </AnimatePresence>
 
         <div className="relative z-[1]">
-          <div className="flex justify-between items-start mb-6">
-            <img src="/logo.PNG" alt="" width={28} height={28} style={{ objectFit: "contain", opacity: 0.7 }} />
-            <span className="text-[10px] font-bold text-[#9B9B9B] tracking-widest uppercase">Virtual Debit</span>
+          <div className="flex justify-between items-start mb-5">
+            <div className="flex items-center gap-2">
+              <img src="/logo.PNG" alt="" width={26} height={26} style={{ objectFit: "contain", opacity: style.logoOpacity }} />
+              <span className="text-sm font-sora font-extrabold tracking-wide" style={{ color: style.text }}>Y-TECH</span>
+            </div>
+            <div
+              className="w-9 h-7 rounded-md"
+              style={{ background: "linear-gradient(135deg, #F3E5B0 0%, #D9C079 50%, #B89A4E 100%)", border: "1px solid rgba(0,0,0,0.08)" }}
+            />
           </div>
 
-          <p className="font-bold text-lg tracking-widest text-[#1A1A1A] mb-4">
+          <p className="font-bold text-lg tracking-widest mb-4" style={{ color: style.text }}>
             {maskedNumber}
           </p>
 
           <div className="flex justify-between items-end">
             <div>
-              <p className="text-[10px] text-[#ADADAD] uppercase tracking-wider mb-0.5 font-medium">Cardholder</p>
-              <p className="font-bold text-sm text-[#1A1A1A]">
+              <p className="text-[10px] uppercase tracking-wider mb-0.5 font-medium" style={{ color: style.textMuted }}>Cardholder</p>
+              <p className="font-bold text-sm" style={{ color: style.text }}>
                 {profile.first_name} {profile.last_name}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] text-[#ADADAD] uppercase tracking-wider mb-0.5 font-medium">Expires</p>
-              <p className="font-bold text-sm text-[#1A1A1A]">{expiry}</p>
+              <p className="text-[10px] uppercase tracking-wider mb-0.5 font-medium" style={{ color: style.textMuted }}>Expires</p>
+              <p className="font-bold text-sm" style={{ color: style.text }}>{expiry}</p>
             </div>
+          </div>
+
+          <div className="flex justify-end mt-3">
+            <span className="text-lg font-black italic tracking-tight" style={{ color: style.text }}>VISA</span>
           </div>
         </div>
       </motion.div>
@@ -137,7 +195,7 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
             className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all duration-200 ${
               active
                 ? "border-blue-300 bg-blue-50 text-blue-500"
-                : "border-[#F0F0F0] bg-white text-[#6B6B6B] hover:border-[rgba(245,166,35,0.6)] hover:shadow-[0_0_0_3px_rgba(245,166,35,0.15),_0_4px_20px_rgba(245,166,35,0.2)] hover:text-[#F5A623]"
+                : "border-[#F0F0F0] bg-white text-[#6B6B6B] hover:border-[rgba(245,200,0,0.6)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.15),_0_4px_20px_rgba(245,200,0,0.2)] hover:text-[#F5C800]"
             }`}
           >
             <Icon className="w-4 h-4" />
@@ -160,6 +218,27 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
             <span className={`font-semibold ${color ?? "text-[#1A1A1A]"}`}>{value}</span>
           </div>
         ))}
+        <div className="flex justify-between items-center text-sm pt-1">
+          <span className="text-[#6B6B6B] font-medium">Card color</span>
+          <div className="flex items-center gap-2">
+            {(["yellow", "blue"] as const).map((c) => (
+              <motion.button
+                key={c}
+                type="button"
+                whileTap={{ scale: 0.9 }}
+                onClick={() => changeCardColor(c)}
+                disabled={savingColor}
+                aria-label={`${c === "yellow" ? "Yellow" : "Blue"} card`}
+                aria-pressed={cardColor === c}
+                className="w-6 h-6 rounded-full transition-all duration-150 disabled:opacity-60"
+                style={{
+                  background: CARD_STYLES[c].background,
+                  boxShadow: cardColor === c ? "0 0 0 2px #FFFFFF, 0 0 0 4px " + (c === "yellow" ? "#F5C800" : "#0E85CE") : "none",
+                }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

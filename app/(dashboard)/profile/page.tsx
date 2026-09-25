@@ -106,7 +106,7 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 rounded-full border-2 border-[#F5A623] border-t-transparent animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-[#F5C800] border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -125,7 +125,7 @@ export default function ProfilePage() {
           {/* Avatar */}
           <GlassCard className="p-6 flex items-center gap-5">
             <div className="relative">
-              <div className="w-20 h-20 rounded-3xl gold-gradient flex items-center justify-center text-white text-2xl font-sora font-bold overflow-hidden">
+              <div className="w-20 h-20 rounded-3xl gold-gradient flex items-center justify-center text-[#3A2E00] text-2xl font-sora font-bold overflow-hidden">
                 {profile.avatar_url
                   ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                   : getInitials(profile.first_name, profile.last_name)
@@ -133,7 +133,7 @@ export default function ProfilePage() {
               </div>
               <button
                 onClick={() => fileRef.current?.click()}
-                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,166,35,0.3)]"
+                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,200,0,0.3)]"
               >
                 {uploading ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Camera className="w-3.5 h-3.5 text-white" />}
               </button>
@@ -142,7 +142,7 @@ export default function ProfilePage() {
             <div>
               <h2 className="font-sora font-bold text-xl text-[#1A1A1A]">{profile.first_name} {profile.last_name}</h2>
               <p className="font-inter text-sm text-[#6B6B6B]">{sessionEmail}</p>
-              <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-sora font-bold gold-gradient text-white">{planInfo?.name ?? profile.plan}</span>
+              <span className="inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-sora font-bold gold-gradient text-[#3A2E00]">{planInfo?.name ?? profile.plan}</span>
             </div>
           </GlassCard>
 
@@ -195,7 +195,7 @@ export default function ProfilePage() {
                 { label: "Account Number", value: profile.account_number, icon: CreditCard },
                 { label: "Member since", value: formatDate(profile.created_at), icon: Calendar },
               ].map(({ label, value, icon: Icon }) => (
-                <div key={label} className="flex items-center gap-3 p-3 rounded-2xl bg-[rgba(245,166,35,0.04)] border border-[rgba(245,166,35,0.1)]">
+                <div key={label} className="flex items-center gap-3 p-3 rounded-2xl bg-[rgba(245,200,0,0.04)] border border-[rgba(245,200,0,0.1)]">
                   <Icon className="w-4 h-4 text-[#9B9B9B]" />
                   <div className="flex-1 flex justify-between">
                     <span className="font-inter text-sm text-[#6B6B6B]">{label}</span>
@@ -210,7 +210,7 @@ export default function ProfilePage() {
           <GlassCard gold className="p-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-sora font-bold text-base text-[#1A1A1A]">Current Plan</h3>
-              <a href="/settings" className="font-inter text-sm font-semibold text-[#F5A623] hover:text-[#C8860A] transition-colors">Change plan</a>
+              <a href="/settings" className="font-inter text-sm font-semibold text-[#F5C800] hover:text-[#EFC000] transition-colors">Change plan</a>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-2xl">{planInfo?.emoji ?? "💳"}</span>

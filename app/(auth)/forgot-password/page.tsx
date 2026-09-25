@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
       >
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-          style={{ border: "1.5px solid rgba(245,166,35,0.5)", background: "rgba(255,255,255,0.9)" }}
+          style={{ border: "1.5px solid rgba(245,200,0,0.5)", background: "rgba(255,255,255,0.9)" }}
         >
           <img src="/logo.PNG" alt="Y-tech" width={40} height={40} style={{ objectFit: "contain" }} />
         </div>
@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
                 If an account exists for that address, you&apos;ll receive a password reset link shortly.
               </p>
               <p className="mt-6 text-center font-inter text-sm text-[#6B6B6B]">
-                <Link href="/login" className="font-semibold text-[#F5A623] hover:text-[#C8860A] transition-colors">
+                <Link href="/login" className="font-semibold text-[#F5C800] hover:text-[#EFC000] transition-colors">
                   Back to login
                 </Link>
               </p>
@@ -129,7 +129,7 @@ export default function ForgotPasswordPage() {
 
               <p className="mt-6 text-center font-inter text-sm text-[#6B6B6B]">
                 Remember your password?{" "}
-                <Link href="/login" className="font-semibold text-[#F5A623] hover:text-[#C8860A] transition-colors">
+                <Link href="/login" className="font-semibold text-[#F5C800] hover:text-[#EFC000] transition-colors">
                   Back to login
                 </Link>
               </p>

@@ -54,7 +54,7 @@ export default function Sidebar({ profile, notifications }: SidebarProps) {
         <Link href="/dashboard" className="flex items-center gap-3">
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ border: "1.5px solid rgba(245,166,35,0.5)", background: "#FFFFFF" }}
+            style={{ border: "1.5px solid rgba(245,200,0,0.5)", background: "#FFFFFF" }}
           >
             <img src="/logo.PNG" alt="Y-tech" width={24} height={24} style={{ objectFit: "contain" }} />
           </div>
@@ -73,14 +73,14 @@ export default function Sidebar({ profile, notifications }: SidebarProps) {
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                   active
-                    ? "gold-gradient text-white shadow-[0_2px_12px_rgba(245,166,35,0.3)]"
-                    : "text-[#6B6B6B] hover:text-[#1A1A1A] hover:bg-[rgba(245,166,35,0.06)] hover:border-[rgba(245,166,35,0.3)] border border-transparent"
+                    ? "gold-gradient text-[#3A2E00] shadow-[0_2px_12px_rgba(245,200,0,0.3)]"
+                    : "text-[#6B6B6B] hover:text-[#1A1A1A] hover:bg-[rgba(245,200,0,0.06)] hover:border-[rgba(245,200,0,0.3)] border border-transparent"
                 }`}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
                 <span className="font-semibold text-sm">{label}</span>
                 {label === "AI Assistant" && (
-                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full gold-gradient text-white font-bold">AI</span>
+                  <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full gold-gradient text-[#3A2E00] font-bold">AI</span>
                 )}
               </motion.div>
             </Link>
@@ -101,7 +101,7 @@ export default function Sidebar({ profile, notifications }: SidebarProps) {
 
         {/* User */}
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full gold-gradient flex items-center justify-center flex-shrink-0 text-white text-xs font-bold overflow-hidden">
+          <div className="w-8 h-8 rounded-full gold-gradient flex items-center justify-center flex-shrink-0 text-[#3A2E00] text-xs font-bold overflow-hidden">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
             ) : (

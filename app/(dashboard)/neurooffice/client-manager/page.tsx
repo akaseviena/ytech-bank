@@ -51,7 +51,7 @@ export default function ClientManagerPage() {
                 className="px-4 py-2 rounded-xl text-sm font-semibold border transition-all capitalize"
                 style={
                   tone === t
-                    ? { background: "rgba(245,166,35,0.1)", borderColor: "#F5A623", color: "#F5A623" }
+                    ? { background: "rgba(245,200,0,0.1)", borderColor: "#F5C800", color: "#F5C800" }
                     : { borderColor: "#E8E8E8", color: "#6B6B6B" }
                 }
               >
