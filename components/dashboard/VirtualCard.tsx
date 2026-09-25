@@ -19,7 +19,6 @@ const CARD_STYLES = {
     boxShadow: "0 4px 20px rgba(245,200,0,0.35)",
     text: "#3A2E00",
     textMuted: "rgba(58,46,0,0.65)",
-    logoOpacity: 0.85,
   },
   blue: {
     background: "linear-gradient(135deg, #79D6FF 0%, #28A8EF 52%, #0E85CE 100%)",
@@ -27,7 +26,6 @@ const CARD_STYLES = {
     boxShadow: "0 4px 20px rgba(14,133,206,0.35)",
     text: "#FFFFFF",
     textMuted: "rgba(255,255,255,0.75)",
-    logoOpacity: 1,
   },
 } as const;
 
@@ -118,12 +116,12 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="relative overflow-hidden rounded-[20px] p-6"
+        className="relative overflow-hidden rounded-[20px] p-6 w-full"
         style={{
           background: style.background,
           border: style.border,
           boxShadow: style.boxShadow,
-          minHeight: 180,
+          aspectRatio: "1.586 / 1",
         }}
       >
         {/* Frozen overlay */}
@@ -144,37 +142,36 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
           )}
         </AnimatePresence>
 
-        <div className="relative z-[1]">
-          <div className="flex justify-between items-start mb-5">
-            <div className="flex items-center gap-2">
-              <img src="/logo.PNG" alt="" width={26} height={26} style={{ objectFit: "contain", opacity: style.logoOpacity }} />
-              <span className="text-sm font-sora font-extrabold tracking-wide" style={{ color: style.text }}>Y-TECH</span>
-            </div>
+        <div className="relative z-[1] h-full flex flex-col justify-between">
+          <div className="flex justify-between items-start">
+            <span className="text-sm font-sora font-extrabold tracking-wide" style={{ color: style.text }}>Y-TECH</span>
             <div
               className="w-9 h-7 rounded-md"
               style={{ background: "linear-gradient(135deg, #F3E5B0 0%, #D9C079 50%, #B89A4E 100%)", border: "1px solid rgba(0,0,0,0.08)" }}
             />
           </div>
 
-          <p className="font-bold text-lg tracking-widest mb-4" style={{ color: style.text }}>
+          <p className="font-bold text-lg tracking-widest" style={{ color: style.text }}>
             {maskedNumber}
           </p>
 
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider mb-0.5 font-medium" style={{ color: style.textMuted }}>Cardholder</p>
-              <p className="font-bold text-sm" style={{ color: style.text }}>
-                {profile.first_name} {profile.last_name}
-              </p>
+          <div>
+            <div className="flex justify-between items-end">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider mb-0.5 font-medium" style={{ color: style.textMuted }}>Cardholder</p>
+                <p className="font-bold text-sm" style={{ color: style.text }}>
+                  {profile.first_name} {profile.last_name}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-wider mb-0.5 font-medium" style={{ color: style.textMuted }}>Expires</p>
+                <p className="font-bold text-sm" style={{ color: style.text }}>{expiry}</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wider mb-0.5 font-medium" style={{ color: style.textMuted }}>Expires</p>
-              <p className="font-bold text-sm" style={{ color: style.text }}>{expiry}</p>
-            </div>
-          </div>
 
-          <div className="flex justify-end mt-3">
-            <span className="text-lg font-black italic tracking-tight" style={{ color: style.text }}>VISA</span>
+            <div className="flex justify-end mt-3">
+              <span className="text-lg font-black italic tracking-tight" style={{ color: style.text }}>VISA</span>
+            </div>
           </div>
         </div>
       </motion.div>

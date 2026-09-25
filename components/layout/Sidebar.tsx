@@ -58,7 +58,7 @@ export default function Sidebar({ profile, notifications }: SidebarProps) {
           >
             <img src="/logo.PNG" alt="Y-tech" width={24} height={24} style={{ objectFit: "contain" }} />
           </div>
-          <span className="font-bold text-sm gold-text">Y-tech</span>
+          <span className="font-bold text-2xl gold-text">Y-tech</span>
         </Link>
       </div>
 
