@@ -22,6 +22,24 @@ const stepVariants = {
   exit: { opacity: 0, x: -60 },
 };
 
+function RecipientRow({ u, onSelect }: { u: Profile; onSelect: () => void }) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.98 }}
+      onClick={onSelect}
+      className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-[rgba(245,166,35,0.06)] transition-colors text-left"
+    >
+      <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-white text-sm font-sora font-bold flex-shrink-0">
+        {u.avatar_url ? <img src={u.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="" /> : getInitials(u.first_name, u.last_name)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-inter font-semibold text-sm text-[#1A1A1A]">{u.first_name} {u.last_name}</p>
+        <p className="font-inter text-xs text-[#9B9B9B] font-mono">{u.account_number}</p>
+      </div>
+    </motion.button>
+  );
+}
+
 export default function TransferPage() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -29,6 +47,8 @@ export default function TransferPage() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Profile[]>([]);
   const [searching, setSearching] = useState(false);
+  const [recentResults, setRecentResults] = useState<Profile[]>([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
   const [recipient, setRecipient] = useState<Profile | null>(null);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -47,6 +67,17 @@ export default function TransferPage() {
       const { data } = await supabase.from("profiles").select("id,balance,first_name,last_name,account_number,avatar_url,plan,card_frozen").eq("id", user.id).single();
       setCurrentUser(data as Profile);
       setFrozen(Boolean(data?.card_frozen));
+    });
+  }, []);
+
+  // Default recipient list, shown before the user types anything — people
+  // already sent to (most recent first), then everyone else alphabetically.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.rpc("recent_recipients").then(({ data, error }) => {
+      if (error) console.error("[transfer] recent_recipients failed:", error);
+      setRecentResults((data ?? []) as Profile[]);
+      setLoadingRecent(false);
     });
   }, []);
 
@@ -196,32 +227,41 @@ export default function TransferPage() {
                     autoFocus
                   />
                 </div>
+                {query.length === 0 && (
+                  <>
+                    <p className="text-xs font-inter font-semibold text-[#9B9B9B] uppercase tracking-wider mb-2">All recipients</p>
+                    {loadingRecent && <p className="text-sm text-[#9B9B9B] font-inter text-center py-4">Loading…</p>}
+                    {!loadingRecent && recentResults.length > 0 && (
+                      <div className="space-y-2 max-h-80 overflow-y-auto">
+                        {recentResults.map((u) => (
+                          <RecipientRow key={u.id} u={u} onSelect={() => { setRecipient(u); setStep(2); }} />
+                        ))}
+                      </div>
+                    )}
+                    {!loadingRecent && recentResults.length === 0 && (
+                      <p className="text-sm text-[#9B9B9B] font-inter text-center py-8">No recipients yet</p>
+                    )}
+                  </>
+                )}
+
                 {query.length > 0 && query.length < 3 && (
                   <p className="text-sm text-[#9B9B9B] font-inter text-center py-2">Type at least 3 characters to search</p>
                 )}
-                {searching && <p className="text-sm text-[#9B9B9B] font-inter text-center py-4">Searching…</p>}
-                {results.length > 0 && (
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {results.map((u) => (
-                      <motion.button
-                        key={u.id}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => { setRecipient(u); setStep(2); }}
-                        className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-[rgba(245,166,35,0.06)] transition-colors text-left"
-                      >
-                        <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-white text-sm font-sora font-bold flex-shrink-0">
-                          {u.avatar_url ? <img src={u.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="" /> : getInitials(u.first_name, u.last_name)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-inter font-semibold text-sm text-[#1A1A1A]">{u.first_name} {u.last_name}</p>
-                          <p className="font-inter text-xs text-[#9B9B9B] font-mono">{u.account_number}</p>
-                        </div>
-                      </motion.button>
-                    ))}
-                  </div>
-                )}
-                {query.length >= 3 && !searching && results.length === 0 && (
-                  <p className="text-sm text-[#9B9B9B] font-inter text-center py-8">No users found</p>
+
+                {query.length >= 3 && (
+                  <>
+                    {searching && <p className="text-sm text-[#9B9B9B] font-inter text-center py-4">Searching…</p>}
+                    {results.length > 0 && (
+                      <div className="space-y-2 max-h-80 overflow-y-auto">
+                        {results.map((u) => (
+                          <RecipientRow key={u.id} u={u} onSelect={() => { setRecipient(u); setStep(2); }} />
+                        ))}
+                      </div>
+                    )}
+                    {!searching && results.length === 0 && (
+                      <p className="text-sm text-[#9B9B9B] font-inter text-center py-8">No users found</p>
+                    )}
+                  </>
                 )}
               </motion.div>
             )}

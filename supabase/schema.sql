@@ -142,6 +142,45 @@ $$;
 REVOKE ALL ON FUNCTION search_transfer_recipients(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION search_transfer_recipients(TEXT) TO authenticated;
 
+-- Default recipient list for the transfer screen, shown before the user
+-- types anything — see supabase/add-recent-recipients-fn.sql for the full
+-- writeup. Same rail and security posture as search_transfer_recipients.
+CREATE OR REPLACE FUNCTION recent_recipients()
+RETURNS TABLE (
+  id UUID,
+  first_name TEXT,
+  last_name TEXT,
+  account_number TEXT,
+  avatar_url TEXT,
+  plan TEXT
+)
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE sql
+STABLE
+AS $$
+  WITH recent AS (
+    SELECT t.receiver_id AS id, MAX(t.created_at) AS last_sent
+    FROM transactions t
+    WHERE t.sender_id = auth.uid()
+      AND t.receiver_id IS NOT NULL
+      AND t.receiver_id <> auth.uid()
+    GROUP BY t.receiver_id
+  )
+  SELECT p.id, p.first_name, p.last_name, p.account_number, p.avatar_url, p.plan
+  FROM profiles p
+  LEFT JOIN recent r ON r.id = p.id
+  WHERE p.id <> auth.uid()
+  ORDER BY
+    (r.last_sent IS NULL) ASC,
+    r.last_sent DESC,
+    p.first_name ASC, p.last_name ASC
+  LIMIT 50;
+$$;
+
+REVOKE ALL ON FUNCTION recent_recipients() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION recent_recipients() TO authenticated;
+
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
