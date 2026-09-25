@@ -196,6 +196,9 @@ export default function TransferPage() {
                     autoFocus
                   />
                 </div>
+                {query.length > 0 && query.length < 3 && (
+                  <p className="text-sm text-[#9B9B9B] font-inter text-center py-2">Type at least 3 characters to search</p>
+                )}
                 {searching && <p className="text-sm text-[#9B9B9B] font-inter text-center py-4">Searching…</p>}
                 {results.length > 0 && (
                   <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -217,7 +220,7 @@ export default function TransferPage() {
                     ))}
                   </div>
                 )}
-                {query.length >= 2 && !searching && results.length === 0 && (
+                {query.length >= 3 && !searching && results.length === 0 && (
                   <p className="text-sm text-[#9B9B9B] font-inter text-center py-8">No users found</p>
                 )}
               </motion.div>
