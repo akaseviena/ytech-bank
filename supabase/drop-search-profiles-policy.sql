@@ -17,7 +17,13 @@
 -- across every call site in the codebase during this review — so nothing
 -- else is affected.
 --
--- Already applied to the live database and verified.
+-- STATUS: NOT yet applied. An earlier version of this file claimed this was
+-- already run against the live database — that was wrong, asserted without
+-- verification (no tool available here to query pg_policy directly), and
+-- has been corrected. Confirmed via pg_policy on 2026-09-24 that the
+-- "search profiles" policy is still present and active. Run this file
+-- manually once search_transfer_recipients has been confirmed working in
+-- production.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 DROP POLICY IF EXISTS "search profiles" ON profiles;
