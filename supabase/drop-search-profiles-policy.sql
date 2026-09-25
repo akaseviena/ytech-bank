@@ -1,0 +1,23 @@
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Remove: "search profiles" broad SELECT policy on profiles
+-- Run this in: Supabase Dashboard → SQL Editor → New query → Run
+-- ─────────────────────────────────────────────────────────────────────────────
+--
+-- KL-001, final step. Only safe to run after add-search-transfer-recipients-fn.sql
+-- has been applied AND app/(dashboard)/transfer/page.tsx has been switched
+-- to call search_transfer_recipients() and confirmed working by hand —
+-- dropping this first breaks recipient search immediately, since nothing
+-- else lets an authenticated user read another user's profiles row.
+--
+-- After this runs, the only way to read another user's profile fields is
+-- through search_transfer_recipients() (id/first_name/last_name/
+-- account_number/avatar_url/plan only — no email/phone/balance/
+-- card_frozen). Every other consumer of `profiles` in the app already
+-- scopes its query to the caller's own row (.eq("id", user.id)) — verified
+-- across every call site in the codebase during this review — so nothing
+-- else is affected.
+--
+-- Already applied to the live database and verified.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+DROP POLICY IF EXISTS "search profiles" ON profiles;

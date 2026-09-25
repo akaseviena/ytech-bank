@@ -108,6 +108,40 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- KL-001. Recipient search for the profiles/transfer_funds rail (web
+-- transfer flow). Deliberately separate from search_recipients, which
+-- belongs to the accounts/transfers rail (mobile) and must not be touched —
+-- see supabase/add-search-transfer-recipients-fn.sql for the full writeup.
+CREATE OR REPLACE FUNCTION search_transfer_recipients(q TEXT)
+RETURNS TABLE (
+  id UUID,
+  first_name TEXT,
+  last_name TEXT,
+  account_number TEXT,
+  avatar_url TEXT,
+  plan TEXT
+)
+SECURITY DEFINER
+SET search_path = public
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT id, first_name, last_name, account_number, avatar_url, plan
+  FROM profiles
+  WHERE length(btrim(q)) >= 3
+    AND id <> auth.uid()
+    AND (
+      first_name ILIKE '%' || q || '%'
+      OR last_name ILIKE '%' || q || '%'
+      OR account_number ILIKE '%' || q || '%'
+    )
+  ORDER BY first_name, last_name
+  LIMIT 8;
+$$;
+
+REVOKE ALL ON FUNCTION search_transfer_recipients(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION search_transfer_recipients(TEXT) TO authenticated;
+
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -149,8 +183,12 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON savings_goals    TO authenticated;
 DROP POLICY IF EXISTS "own profile" ON profiles;
 CREATE POLICY "own profile" ON profiles FOR ALL USING (auth.uid() = id);
 
+-- KL-001. No broad "search profiles" policy — SELECT is scoped to your own
+-- row only (see "own profile" above). Recipient search for the web transfer
+-- flow goes through search_transfer_recipients(), which is SECURITY
+-- DEFINER and returns only id/first_name/last_name/account_number/
+-- avatar_url/plan, never email/phone/balance/card_frozen/etc.
 DROP POLICY IF EXISTS "search profiles" ON profiles;
-CREATE POLICY "search profiles" ON profiles FOR SELECT USING (true);
 
 -- SELECT: covers all transactions involving the user, including null-receiver withdrawals
 DROP POLICY IF EXISTS "own transactions" ON transactions;

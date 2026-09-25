@@ -51,18 +51,14 @@ export default function TransferPage() {
   }, []);
 
   const searchUsers = useCallback(async (q: string) => {
-    if (q.length < 2) { setResults([]); return; }
+    if (q.length < 3) { setResults([]); return; }
     setSearching(true);
     const supabase = createClient();
-    const { data } = await supabase
-      .from("profiles")
-      .select("id,first_name,last_name,avatar_url,account_number,plan")
-      .or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%,account_number.ilike.%${q}%`)
-      .neq("id", currentUser?.id ?? "")
-      .limit(8);
+    const { data, error } = await supabase.rpc("search_transfer_recipients", { q });
+    if (error) console.error("[transfer] search_transfer_recipients failed:", error);
     setResults((data ?? []) as Profile[]);
     setSearching(false);
-  }, [currentUser?.id]);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => searchUsers(query), 300);
