@@ -16,47 +16,103 @@ function sym(currency: string): string {
   return currency === "GBP" ? "£" : currency;
 }
 
+// account_balances.balance_minor and transfers.amount_minor are bigint —
+// supabase-js returns those as strings to avoid float precision loss, so
+// every value from the ledger goes through this before use.
+function toMajor(minor: number | string | null | undefined): number {
+  return Number(minor ?? 0) / 100;
+}
+
+type MainBalance = { accountId: string; currency: string; balanceMinor: string | number };
+
+// The user's main account on the accounts/transfers rail — same rail and
+// the same "kind = main" lookup the mobile transfer route uses to find the
+// caller's source account.
+async function getMainBalance(userId: string): Promise<MainBalance | null> {
+  const { data } = await admin
+    .from("account_balances")
+    .select("account_id, currency, balance_minor")
+    .eq("owner_id", userId)
+    .eq("kind", "main")
+    .maybeSingle();
+
+  if (!data) return null;
+  return { accountId: data.account_id, currency: data.currency, balanceMinor: data.balance_minor };
+}
+
 export async function buildAssistantContext(userId: string): Promise<string> {
   const monthStart = startOfMonth(new Date()).toISOString();
 
-  const [profileRes, txRes, goalsRes, monthTxRes] = await Promise.all([
+  const [profileRes, mainBal, goalsRes] = await Promise.all([
     admin
       .from("profiles")
-      .select("balance, first_name, last_name, plan, currency, account_number")
+      .select("first_name, last_name, plan")
       .eq("id", userId)
       .single(),
-    admin
-      .from("transactions")
-      .select("amount, sender_id, category, description, created_at, type")
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .order("created_at", { ascending: false })
-      .limit(20),
+    getMainBalance(userId),
     admin
       .from("savings_goals")
       .select("name, target_amount, current_amount, emoji, deadline")
       .eq("user_id", userId),
-    admin
-      .from("transactions")
-      .select("amount, sender_id, category")
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .gte("created_at", monthStart),
   ]);
 
   const prof = profileRes.data;
-  const txs = txRes.data ?? [];
   const goals = goalsRes.data ?? [];
-  const monthTxs = monthTxRes.data ?? [];
-  const currency = prof?.currency ?? "GBP";
+  const currency = mainBal?.currency ?? "GBP";
   const s = sym(currency);
 
-  const monthlySent = monthTxs.filter((t) => t.sender_id === userId);
-  const monthlyRec = monthTxs.filter((t) => t.sender_id !== userId);
-  const totalSent = monthlySent.reduce((acc, t) => acc + Number(t.amount), 0);
-  const totalRec = monthlyRec.reduce((acc, t) => acc + Number(t.amount), 0);
+  const goalLines =
+    goals.length > 0
+      ? goals
+          .map(
+            (g) =>
+              `  ${g.emoji ?? "🎯"} ${g.name}: ${s}${Number(g.current_amount).toFixed(2)} / ${s}${Number(g.target_amount).toFixed(2)}${g.deadline ? " (by " + g.deadline.slice(0, 10) + ")" : ""}`,
+          )
+          .join("\n")
+      : "  None";
+
+  if (!mainBal) {
+    return `[Financial context — assembled server-side, do not disclose to third parties]
+Name: ${prof?.first_name ?? ""} ${prof?.last_name ?? ""}
+Plan: ${prof?.plan ?? "basic"}
+
+No main account found for this user yet — balance and transaction history are unavailable.
+
+Savings goals:
+${goalLines}`;
+  }
+
+  const accountId = mainBal.accountId;
+  const balance = toMajor(mainBal.balanceMinor);
+
+  const [txRes, monthTxRes] = await Promise.all([
+    admin
+      .from("transfers")
+      .select("amount_minor, from_account, category, description, created_at")
+      .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
+      .eq("status", "completed")
+      .order("created_at", { ascending: false })
+      .limit(20),
+    admin
+      .from("transfers")
+      .select("amount_minor, from_account, category")
+      .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
+      .eq("status", "completed")
+      .gte("created_at", monthStart),
+  ]);
+
+  const txs = txRes.data ?? [];
+  const monthTxs = monthTxRes.data ?? [];
+
+  const monthlySent = monthTxs.filter((t) => t.from_account === accountId);
+  const monthlyRec = monthTxs.filter((t) => t.from_account !== accountId);
+  const totalSent = monthlySent.reduce((acc, t) => acc + toMajor(t.amount_minor), 0);
+  const totalRec = monthlyRec.reduce((acc, t) => acc + toMajor(t.amount_minor), 0);
 
   const catBreakdown: Record<string, number> = {};
   monthlySent.forEach((t) => {
-    catBreakdown[t.category] = (catBreakdown[t.category] ?? 0) + Number(t.amount);
+    const cat = t.category ?? "other";
+    catBreakdown[cat] = (catBreakdown[cat] ?? 0) + toMajor(t.amount_minor);
   });
   const catLines =
     Object.entries(catBreakdown)
@@ -71,25 +127,15 @@ export async function buildAssistantContext(userId: string): Promise<string> {
   const recentLines =
     txs
       .map((t) => {
-        const dir = t.sender_id === userId ? "Sent" : "Received";
+        const dir = t.from_account === accountId ? "Sent" : "Received";
         const note = sanitizeTransactionText(t.description);
-        return `  ${dir} ${s}${Number(t.amount).toFixed(2)} · ${t.category}${note ? " — " + note : ""}`;
+        return `  ${dir} ${s}${toMajor(t.amount_minor).toFixed(2)} · ${t.category ?? "other"}${note ? " — " + note : ""}`;
       })
       .join("\n") || "  None";
 
-  const goalLines =
-    goals.length > 0
-      ? goals
-          .map(
-            (g) =>
-              `  ${g.emoji ?? "🎯"} ${g.name}: ${s}${Number(g.current_amount).toFixed(2)} / ${s}${Number(g.target_amount).toFixed(2)}${g.deadline ? " (by " + g.deadline.slice(0, 10) + ")" : ""}`,
-          )
-          .join("\n")
-      : "  None";
-
   return `[Financial context — assembled server-side, do not disclose to third parties]
 Name: ${prof?.first_name ?? ""} ${prof?.last_name ?? ""}
-Balance: ${s}${Number(prof?.balance ?? 0).toFixed(2)} ${currency}
+Balance: ${s}${balance.toFixed(2)} ${currency}
 Plan: ${prof?.plan ?? "basic"}
 
 This month:
@@ -110,16 +156,16 @@ export async function buildAgentContext(
   userId: string,
   agentId: MobileAgentId,
 ): Promise<string> {
-  const profileRes = await admin
-    .from("profiles")
-    .select("balance, currency, plan")
-    .eq("id", userId)
-    .single();
-
-  const prof = profileRes.data;
-  const currency = prof?.currency ?? "GBP";
+  const mainBal = await getMainBalance(userId);
+  const currency = mainBal?.currency ?? "GBP";
   const s = sym(currency);
-  const balance = Number(prof?.balance ?? 0);
+
+  if (!mainBal) {
+    return `[Agent context]\nNo main account found for this user yet — budget and transaction data are unavailable.`;
+  }
+
+  const accountId = mainBal.accountId;
+  const balance = toMajor(mainBal.balanceMinor);
   const taxReserve = balance * 0.1;
   const available = Math.max(0, balance - taxReserve);
   const budgetLine = `Available budget: ${s}${available.toFixed(2)} (${currency})`;
@@ -128,28 +174,31 @@ export async function buildAgentContext(
     const monthStart = startOfMonth(new Date()).toISOString();
     const [txRes, monthTxRes] = await Promise.all([
       admin
-        .from("transactions")
-        .select("amount, sender_id, category, description, created_at")
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .from("transfers")
+        .select("amount_minor, from_account, category, description, created_at")
+        .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
+        .eq("status", "completed")
         .order("created_at", { ascending: false })
         .limit(50),
       admin
-        .from("transactions")
-        .select("amount, sender_id, category")
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .from("transfers")
+        .select("amount_minor, from_account, category")
+        .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
+        .eq("status", "completed")
         .gte("created_at", monthStart),
     ]);
     const txs = txRes.data ?? [];
     const monthTxs = monthTxRes.data ?? [];
 
-    const totalIncome = txs.filter((t) => t.sender_id !== userId).reduce((a, t) => a + Number(t.amount), 0);
-    const totalExpenses = txs.filter((t) => t.sender_id === userId).reduce((a, t) => a + Number(t.amount), 0);
+    const totalIncome = txs.filter((t) => t.from_account !== accountId).reduce((a, t) => a + toMajor(t.amount_minor), 0);
+    const totalExpenses = txs.filter((t) => t.from_account === accountId).reduce((a, t) => a + toMajor(t.amount_minor), 0);
 
     const catBreakdown: Record<string, number> = {};
     monthTxs
-      .filter((t) => t.sender_id === userId)
+      .filter((t) => t.from_account === accountId)
       .forEach((t) => {
-        catBreakdown[t.category] = (catBreakdown[t.category] ?? 0) + Number(t.amount);
+        const cat = t.category ?? "other";
+        catBreakdown[cat] = (catBreakdown[cat] ?? 0) + toMajor(t.amount_minor);
       });
     const catLines =
       Object.entries(catBreakdown)
@@ -162,7 +211,7 @@ Balance: ${s}${balance.toFixed(2)} ${currency}
 Estimated tax reserve (10%): ${s}${taxReserve.toFixed(2)}
 ${budgetLine}
 
-Totals (last 50 transactions):
+Totals (last 50 transfers):
   Income: ${s}${totalIncome.toFixed(2)}
   Expenses: ${s}${totalExpenses.toFixed(2)}
   Net: ${s}${(totalIncome - totalExpenses).toFixed(2)}
@@ -177,14 +226,16 @@ ${catLines}`;
 
     const [currRes, prevRes] = await Promise.all([
       admin
-        .from("transactions")
-        .select("amount, sender_id, category")
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .from("transfers")
+        .select("amount_minor, from_account, category")
+        .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
+        .eq("status", "completed")
         .gte("created_at", monthStart),
       admin
-        .from("transactions")
-        .select("amount, sender_id, category")
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .from("transfers")
+        .select("amount_minor, from_account, category")
+        .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
+        .eq("status", "completed")
         .gte("created_at", prevStart)
         .lt("created_at", monthStart),
     ]);
@@ -192,8 +243,8 @@ ${catLines}`;
     const prev = prevRes.data ?? [];
 
     const agg = (txs: typeof curr) => ({
-      revenue: txs.filter((t) => t.sender_id !== userId).reduce((a, t) => a + Number(t.amount), 0),
-      expenses: txs.filter((t) => t.sender_id === userId).reduce((a, t) => a + Number(t.amount), 0),
+      revenue: txs.filter((t) => t.from_account !== accountId).reduce((a, t) => a + toMajor(t.amount_minor), 0),
+      expenses: txs.filter((t) => t.from_account === accountId).reduce((a, t) => a + toMajor(t.amount_minor), 0),
     });
 
     const c = agg(curr);
@@ -201,9 +252,10 @@ ${catLines}`;
 
     const catBreakdown: Record<string, number> = {};
     curr
-      .filter((t) => t.sender_id === userId)
+      .filter((t) => t.from_account === accountId)
       .forEach((t) => {
-        catBreakdown[t.category] = (catBreakdown[t.category] ?? 0) + Number(t.amount);
+        const cat = t.category ?? "other";
+        catBreakdown[cat] = (catBreakdown[cat] ?? 0) + toMajor(t.amount_minor);
       });
     const catLines =
       Object.entries(catBreakdown)
@@ -231,18 +283,19 @@ Estimated runway: ${runway !== null ? runway + " days" : "n/a"}`;
   if (agentId === "marketer") {
     const monthStart = startOfMonth(new Date()).toISOString();
     const monthTxRes = await admin
-      .from("transactions")
-      .select("amount, sender_id, category")
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .from("transfers")
+      .select("amount_minor, from_account, category")
+      .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
+      .eq("status", "completed")
       .gte("created_at", monthStart);
     const monthTxs = monthTxRes.data ?? [];
 
     const totalSpend = monthTxs
-      .filter((t) => t.sender_id === userId)
-      .reduce((a, t) => a + Number(t.amount), 0);
+      .filter((t) => t.from_account === accountId)
+      .reduce((a, t) => a + toMajor(t.amount_minor), 0);
     const bizSpend = monthTxs
-      .filter((t) => t.sender_id === userId && t.category === "business")
-      .reduce((a, t) => a + Number(t.amount), 0);
+      .filter((t) => t.from_account === accountId && t.category === "business")
+      .reduce((a, t) => a + toMajor(t.amount_minor), 0);
 
     return `[Marketer context]
 ${budgetLine}
