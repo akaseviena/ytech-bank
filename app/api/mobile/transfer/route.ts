@@ -50,21 +50,28 @@ export async function POST(request: Request) {
     .from("accounts")
     .select("id")
     .eq("owner_id", user.id)
-    .eq("type", "main")
+    .eq("kind", "main")
     .single();
 
   if (accountError || !fromAccount) {
     return Response.json({ error: "invalid_request", message: "Source account not found." }, { status: 400 });
   }
 
-  // Call post_transfer with service-role client; idempotency key passed through
+  // Call post_transfer with service-role client; idempotency key passed through.
+  // Param names must match the live function's real signature — p_from/p_to/
+  // p_amount_minor/p_rail, not p_from_account_id/p_to_account_id/p_amount,
+  // confirmed against the live schema (the old names don't exist and every
+  // call was failing with PGRST202 before this). category is NOT NULL on
+  // transfers, so a client that omits it (the Zod schema allows this) falls
+  // back to "other" rather than sending null and failing the insert.
   const { data: result, error: rpcError } = await admin.rpc("post_transfer", {
-    p_from_account_id: fromAccount.id,
-    p_to_account_id: toAccountId,
-    p_amount: amountMinor,
+    p_from: fromAccount.id,
+    p_to: toAccountId,
+    p_amount_minor: amountMinor,
     p_description: description ?? null,
-    p_category: category ?? null,
+    p_category: category ?? "other",
     p_idempotency_key: idempotencyKey,
+    p_rail: "internal",
   });
 
   if (rpcError) {
