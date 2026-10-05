@@ -12,7 +12,7 @@ export default function CookiesPage() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 80px" }}>
         <p style={{ fontSize: 13, color: "#9B9B9B", marginBottom: 8 }}>
-          Last updated: 18 September 2026
+          Last updated: 5 October 2026
         </p>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1A1A1A", marginBottom: 40, lineHeight: 1.2 }}>
           Cookie Policy — Y-tech prototype

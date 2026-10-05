@@ -72,7 +72,11 @@ export function LegalFooter({ current }: { current?: string }) {
           </Link>
         ))}
       </div>
-      <p>© {new Date().getFullYear()} Y-tech. All rights reserved.</p>
+      <p>© {new Date().getFullYear()} YTECH FINANCIAL TECHNOLOGIES LTD. All rights reserved.</p>
+      <p style={{ marginTop: 4 }}>
+        Registered in England and Wales, company number 17497293. Registered office: 128 City
+        Road, London, United Kingdom, EC1V 2NX.
+      </p>
     </footer>
   );
 }

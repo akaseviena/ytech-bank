@@ -12,7 +12,7 @@ export default function PrivacyPage() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 80px" }}>
         <p style={{ fontSize: 13, color: "#9B9B9B", marginBottom: 8 }}>
-          Last updated: 18 September 2026
+          Last updated: 5 October 2026
         </p>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1A1A1A", marginBottom: 8, lineHeight: 1.2 }}>
           Privacy Policy — Y-tech prototype
@@ -20,8 +20,9 @@ export default function PrivacyPage() {
 
         <Section id="who-we-are" title="Who we are">
           <p>
-            Y-TECH FINANCIAL TECHNOLOGIES LTD ("Y-tech", "we", "us") is the data controller for
-            the personal information described here. Company registration pending, United Kingdom.
+            YTECH FINANCIAL TECHNOLOGIES LTD ("Y-tech", "we", "us") is the data controller for
+            the personal information described here. Registered in England and Wales, company
+            number 17497293, registered office: 128 City Road, London, United Kingdom, EC1V 2NX.
           </p>
           <p>
             Contact:{" "}

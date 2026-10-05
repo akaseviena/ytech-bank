@@ -12,7 +12,7 @@ export default function TermsPage() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 80px" }}>
         <p style={{ fontSize: 13, color: "#9B9B9B", marginBottom: 8 }}>
-          Last updated: 18 September 2026
+          Last updated: 5 October 2026
         </p>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1A1A1A", marginBottom: 40, lineHeight: 1.2 }}>
           Terms of Use — Y-tech prototype
@@ -21,7 +21,8 @@ export default function TermsPage() {
         <Section id="what-this-is" title="What this is">
           <p>
             The Y-tech prototype is early-access software provided for evaluation. It is operated
-            by Y-TECH FINANCIAL TECHNOLOGIES LTD, company registration pending, United Kingdom.
+            by YTECH FINANCIAL TECHNOLOGIES LTD, registered in England and Wales, company number
+            17497293, registered office: 128 City Road, London, United Kingdom, EC1V 2NX.
           </p>
         </Section>
 
