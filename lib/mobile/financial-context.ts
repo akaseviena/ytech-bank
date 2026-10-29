@@ -1,6 +1,14 @@
 import { admin } from "./auth";
 import { startOfMonth, subMonths } from "date-fns";
 import { sanitizeTransactionText } from "@/lib/sanitize-transaction-text";
+import { NON_FLOW_RAILS } from "@/lib/ledger";
+
+// The welcome bonus (rail 'promo') and the levelling postings (rail
+// 'migration') change the balance but are not money the person earned or
+// spent. They are left out of every figure below except the balance itself —
+// the same rule the web app applies (lib/ledger.ts), so the assistant and the
+// web UI quote the same totals.
+const NOT_FLOW = `(${NON_FLOW_RAILS.join(",")})`;
 
 export type MobileAgentId =
   | "consultant"
@@ -91,6 +99,7 @@ ${goalLines}`;
       .select("amount_minor, from_account, category, description, created_at")
       .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
       .eq("status", "completed")
+      .not("rail", "in", NOT_FLOW)
       .order("created_at", { ascending: false })
       .limit(20),
     admin
@@ -98,6 +107,7 @@ ${goalLines}`;
       .select("amount_minor, from_account, category")
       .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
       .eq("status", "completed")
+      .not("rail", "in", NOT_FLOW)
       .gte("created_at", monthStart),
   ]);
 
@@ -178,6 +188,7 @@ export async function buildAgentContext(
         .select("amount_minor, from_account, category, description, created_at")
         .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
         .eq("status", "completed")
+        .not("rail", "in", NOT_FLOW)
         .order("created_at", { ascending: false })
         .limit(50),
       admin
@@ -185,6 +196,7 @@ export async function buildAgentContext(
         .select("amount_minor, from_account, category")
         .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
         .eq("status", "completed")
+        .not("rail", "in", NOT_FLOW)
         .gte("created_at", monthStart),
     ]);
     const txs = txRes.data ?? [];
@@ -230,12 +242,14 @@ ${catLines}`;
         .select("amount_minor, from_account, category")
         .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
         .eq("status", "completed")
+        .not("rail", "in", NOT_FLOW)
         .gte("created_at", monthStart),
       admin
         .from("transfers")
         .select("amount_minor, from_account, category")
         .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
         .eq("status", "completed")
+        .not("rail", "in", NOT_FLOW)
         .gte("created_at", prevStart)
         .lt("created_at", monthStart),
     ]);
@@ -287,6 +301,7 @@ Estimated runway: ${runway !== null ? runway + " days" : "n/a"}`;
       .select("amount_minor, from_account, category")
       .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
       .eq("status", "completed")
+      .not("rail", "in", NOT_FLOW)
       .gte("created_at", monthStart);
     const monthTxs = monthTxRes.data ?? [];
 
