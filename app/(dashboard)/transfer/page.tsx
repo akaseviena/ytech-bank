@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, ChevronLeft, Check, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -11,8 +11,8 @@ import GoldButton from "@/components/ui/GoldButton";
 import SuccessAnimation from "@/components/ui/SuccessAnimation";
 import FrozenCardModal from "@/components/ui/FrozenCardModal";
 import { useToast } from "@/components/ui/Toast";
-import { getInitials, formatCurrency } from "@/lib/utils";
-import { CATEGORY_INFO, type TransactionCategory, type Profile } from "@/types";
+import { formatPence, ledgerPence, poundsToPence } from "@/lib/money";
+import { CATEGORY_INFO, type TransactionCategory, type Recipient } from "@/types";
 
 const QUICK_AMOUNTS = [10, 25, 50, 100, 200];
 
@@ -22,7 +22,23 @@ const stepVariants = {
   exit: { opacity: 0, x: -60 },
 };
 
-function RecipientRow({ u, onSelect }: { u: Profile; onSelect: () => void }) {
+// post_transfer answers { ok: false, code } when it refuses.
+const REFUSAL_TEXT: Record<string, string> = {
+  INSUFFICIENT_FUNDS: "Insufficient funds",
+  INVALID_AMOUNT: "Invalid amount",
+  SAME_ACCOUNT: "You cannot send money to yourself",
+  CURRENCY_MISMATCH: "These accounts use different currencies",
+  FORBIDDEN: "This transfer is not permitted",
+  NO_SUCH_ACCOUNT: "This transfer is not permitted",
+};
+
+/** "Anna A." -> "AA" */
+function initialsOf(displayName: string): string {
+  const words = displayName.replace(/\./g, "").split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((w) => w.charAt(0)).join("").toUpperCase();
+}
+
+function RecipientRow({ u, onSelect }: { u: Recipient; onSelect: () => void }) {
   return (
     <motion.button
       whileTap={{ scale: 0.98 }}
@@ -30,11 +46,11 @@ function RecipientRow({ u, onSelect }: { u: Profile; onSelect: () => void }) {
       className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-[rgba(245,200,0,0.06)] transition-colors text-left"
     >
       <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-[#3A2E00] text-sm font-sora font-bold flex-shrink-0">
-        {u.avatar_url ? <img src={u.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="" /> : getInitials(u.first_name, u.last_name)}
+        {u.avatar_url ? <img src={u.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="" /> : initialsOf(u.display_name)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-inter font-semibold text-sm text-[#1A1A1A]">{u.first_name} {u.last_name}</p>
-        <p className="font-inter text-xs text-[#9B9B9B] font-mono">{u.account_number}</p>
+        <p className="font-inter font-semibold text-sm text-[#1A1A1A]">{u.display_name}</p>
+        <p className="font-inter text-xs text-[#9B9B9B] font-mono">{u.account_ref}</p>
       </div>
     </motion.button>
   );
@@ -45,38 +61,54 @@ export default function TransferPage() {
   const { showToast } = useToast();
   const [step, setStep] = useState(1);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Profile[]>([]);
+  const [results, setResults] = useState<Recipient[]>([]);
   const [searching, setSearching] = useState(false);
-  const [recentResults, setRecentResults] = useState<Profile[]>([]);
+  const [recentResults, setRecentResults] = useState<Recipient[]>([]);
   const [loadingRecent, setLoadingRecent] = useState(true);
-  const [recipient, setRecipient] = useState<Profile | null>(null);
+  const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<TransactionCategory>("other");
   const [sending, setSending] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
+  // The signed-in person's ledger account: id to pay from, balance in pence.
+  const [me, setMe] = useState<{ userId: string; accountId: string; balanceMinor: number } | null>(null);
   const [frozen, setFrozen] = useState(false);
   const [showFrozenModal, setShowFrozenModal] = useState(false);
   const [unfreezing, setUnfreezing] = useState(false);
+
+  // One idempotency key per transfer intent. A double click or a retry after a
+  // dropped connection reuses it, so the ledger posts the transfer once; any
+  // change to who / how much / what starts a new intent and a new key.
+  // post_transfer namespaces the key per signed-in user itself, so no user id
+  // is added here.
+  const attemptKey = useRef<string>(crypto.randomUUID());
+  useEffect(() => {
+    attemptKey.current = crypto.randomUUID();
+  }, [recipient?.account_id, amount, description, category]);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("id,balance,first_name,last_name,account_number,avatar_url,plan,card_frozen").eq("id", user.id).single();
-      setCurrentUser(data as Profile);
-      setFrozen(Boolean(data?.card_frozen));
+      const [profile, account] = await Promise.all([
+        supabase.from("profiles").select("card_frozen").eq("id", user.id).single(),
+        supabase.from("account_balances").select("account_id,balance_minor").eq("owner_id", user.id).eq("kind", "main").maybeSingle(),
+      ]);
+      setFrozen(Boolean(profile.data?.card_frozen));
+      if (account.data) {
+        setMe({ userId: user.id, accountId: account.data.account_id, balanceMinor: ledgerPence(account.data.balance_minor) });
+      }
     });
   }, []);
 
   // Default recipient list, shown before the user types anything — people
-  // already sent to (most recent first), then everyone else alphabetically.
+  // already paid (most recent first), then everyone else alphabetically.
   useEffect(() => {
     const supabase = createClient();
     supabase.rpc("recent_recipients").then(({ data, error }) => {
       if (error) console.error("[transfer] recent_recipients failed:", error);
-      setRecentResults((data ?? []) as Profile[]);
+      setRecentResults((data ?? []) as Recipient[]);
       setLoadingRecent(false);
     });
   }, []);
@@ -85,9 +117,9 @@ export default function TransferPage() {
     if (q.length < 3) { setResults([]); return; }
     setSearching(true);
     const supabase = createClient();
-    const { data, error } = await supabase.rpc("search_transfer_recipients", { q });
-    if (error) console.error("[transfer] search_transfer_recipients failed:", error);
-    setResults((data ?? []) as Profile[]);
+    const { data, error } = await supabase.rpc("search_recipients", { q });
+    if (error) console.error("[transfer] search_recipients failed:", error);
+    setResults((data ?? []) as Recipient[]);
     setSearching(false);
   }, []);
 
@@ -96,45 +128,43 @@ export default function TransferPage() {
     return () => clearTimeout(t);
   }, [query, searchUsers]);
 
-  /** Returns the parsed amount, or null if the transfer shouldn't proceed. */
+  /** Returns the amount in pence, or null if the transfer should not proceed. */
   function validateTransfer(): number | null {
-    if (!recipient || !currentUser || !amount) return null;
-    const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) { showToast("error", "Invalid amount"); return null; }
-    if (num > (currentUser.balance ?? 0)) { showToast("error", "Insufficient funds"); return null; }
-    return num;
+    if (!recipient || !me || !amount) return null;
+    const pence = poundsToPence(amount);
+    if (pence === null || pence <= 0) { showToast("error", "Invalid amount"); return null; }
+    if (pence > me.balanceMinor) { showToast("error", "Insufficient funds"); return null; }
+    return pence;
   }
 
   async function handleSend() {
-    const num = validateTransfer();
-    if (num === null) return;
-    // Frozen cards can't send money. transfer_funds() enforces this server-side
-    // too — this check just saves a round-trip and gives a nicer prompt.
+    const pence = validateTransfer();
+    if (pence === null) return;
+    // A frozen card stops card payments, not transfers between people, but the
+    // product still asks the person to unfreeze first. This is an interface
+    // prompt only: post_transfer does not know about card_frozen (decided).
     if (frozen) { setShowFrozenModal(true); return; }
-    await performTransfer(num);
+    await performTransfer(pence);
   }
 
-  async function performTransfer(num: number) {
-    if (!recipient || !currentUser) return;
+  async function performTransfer(pence: number) {
+    if (!recipient || !me) return;
     setSending(true);
     const supabase = createClient();
-    const { data, error } = await supabase.rpc("transfer_funds", {
-      p_sender_id: currentUser.id,
-      p_receiver_id: recipient.id,
-      p_amount: num,
+    // Called as the signed-in person (role authenticated): the database itself
+    // checks that p_from is their account and refuses system accounts.
+    const { data, error } = await supabase.rpc("post_transfer", {
+      p_from: me.accountId,
+      p_to: recipient.account_id,
+      p_amount_minor: pence,
       p_description: description || null,
       p_category: category,
+      p_rail: "internal",
+      p_idempotency_key: attemptKey.current,
     });
     setSending(false);
-    if (error || !data?.success) {
-      // Server-side rejection — e.g. the card was frozen in another tab after
-      // this page loaded. Resync local state and prompt instead of erroring out.
-      if (data?.code === "card_frozen") {
-        setFrozen(true);
-        setShowFrozenModal(true);
-        return;
-      }
-      showToast("error", "Transfer failed", data?.error ?? error?.message);
+    if (error || !data?.ok) {
+      showToast("error", "Transfer failed", REFUSAL_TEXT[data?.code] ?? error?.message ?? "Please try again.");
       return;
     }
     setSuccess(true);
@@ -142,7 +172,7 @@ export default function TransferPage() {
   }
 
   async function handleUnfreezeAndContinue() {
-    if (!currentUser || unfreezing) return;
+    if (!me || unfreezing) return;
     setUnfreezing(true);
     const supabase = createClient();
     // .select().single() so an RLS-filtered zero-row update surfaces as an
@@ -150,7 +180,7 @@ export default function TransferPage() {
     const { data, error } = await supabase
       .from("profiles")
       .update({ card_frozen: false })
-      .eq("id", currentUser.id)
+      .eq("id", me.userId)
       .select("card_frozen")
       .single();
     setUnfreezing(false);
@@ -166,8 +196,8 @@ export default function TransferPage() {
     showToast("info", "Card unfrozen", "Your card is now active.");
 
     // Carry straight on with the transfer they were already trying to make.
-    const num = validateTransfer();
-    if (num !== null) await performTransfer(num);
+    const pence = validateTransfer();
+    if (pence !== null) await performTransfer(pence);
   }
 
   if (success) {
@@ -177,7 +207,7 @@ export default function TransferPage() {
           <GlassCard className="p-8 w-full">
             <SuccessAnimation
               message="Transfer Sent!"
-              subtitle={`£${parseFloat(amount).toFixed(2)} sent to ${recipient?.first_name} ${recipient?.last_name}`}
+              subtitle={`${formatPence(poundsToPence(amount) ?? 0)} sent to ${recipient?.display_name}`}
             />
           </GlassCard>
         </div>
@@ -222,7 +252,7 @@ export default function TransferPage() {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search name, email, or account number…"
+                    placeholder="Search by name or account reference…"
                     className="input-field pl-10"
                     autoFocus
                   />
@@ -234,7 +264,7 @@ export default function TransferPage() {
                     {!loadingRecent && recentResults.length > 0 && (
                       <div className="space-y-2 max-h-80 overflow-y-auto">
                         {recentResults.map((u) => (
-                          <RecipientRow key={u.id} u={u} onSelect={() => { setRecipient(u); setStep(2); }} />
+                          <RecipientRow key={u.account_id} u={u} onSelect={() => { setRecipient(u); setStep(2); }} />
                         ))}
                       </div>
                     )}
@@ -254,7 +284,7 @@ export default function TransferPage() {
                     {results.length > 0 && (
                       <div className="space-y-2 max-h-80 overflow-y-auto">
                         {results.map((u) => (
-                          <RecipientRow key={u.id} u={u} onSelect={() => { setRecipient(u); setStep(2); }} />
+                          <RecipientRow key={u.account_id} u={u} onSelect={() => { setRecipient(u); setStep(2); }} />
                         ))}
                       </div>
                     )}
@@ -276,11 +306,11 @@ export default function TransferPage() {
                 {recipient && (
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-[rgba(245,200,0,0.06)] border border-[rgba(245,200,0,0.2)] mb-6">
                     <div className="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-[#3A2E00] text-sm font-sora font-bold flex-shrink-0">
-                      {getInitials(recipient.first_name, recipient.last_name)}
+                      {initialsOf(recipient.display_name)}
                     </div>
                     <div>
-                      <p className="font-inter font-semibold text-sm text-[#1A1A1A]">{recipient.first_name} {recipient.last_name}</p>
-                      <p className="font-inter text-xs text-[#9B9B9B]">{recipient.account_number}</p>
+                      <p className="font-inter font-semibold text-sm text-[#1A1A1A]">{recipient.display_name}</p>
+                      <p className="font-inter text-xs text-[#9B9B9B]">{recipient.account_ref}</p>
                     </div>
                   </div>
                 )}
@@ -296,9 +326,9 @@ export default function TransferPage() {
                       autoFocus
                     />
                   </div>
-                  {currentUser && (
+                  {me && (
                     <p className="font-inter text-xs text-[#9B9B9B] mt-2">
-                      Available: {formatCurrency(currentUser.balance)}
+                      Available: {formatPence(me.balanceMinor)}
                     </p>
                   )}
                 </div>
@@ -335,10 +365,10 @@ export default function TransferPage() {
                 </div>
 
                 <GoldButton
-                  onClick={() => { if (amount && parseFloat(amount) > 0) setStep(3); }}
+                  onClick={() => { if ((poundsToPence(amount) ?? 0) > 0) setStep(3); }}
                   size="lg"
                   className="w-full"
-                  disabled={!amount || parseFloat(amount) <= 0}
+                  disabled={!((poundsToPence(amount) ?? 0) > 0)}
                 >
                   Continue
                 </GoldButton>
@@ -355,9 +385,9 @@ export default function TransferPage() {
 
                 <div className="space-y-3 mb-8">
                   {[
-                    { label: "To", value: `${recipient?.first_name} ${recipient?.last_name}` },
-                    { label: "Account", value: recipient?.account_number ?? "" },
-                    { label: "Amount", value: formatCurrency(parseFloat(amount || "0")), bold: true, gold: true },
+                    { label: "To", value: recipient?.display_name ?? "" },
+                    { label: "Account", value: recipient?.account_ref ?? "" },
+                    { label: "Amount", value: formatPence(poundsToPence(amount) ?? 0), bold: true, gold: true },
                     { label: "Category", value: `${CATEGORY_INFO[category].emoji} ${CATEGORY_INFO[category].label}` },
                     ...(description ? [{ label: "Note", value: description }] : []),
                   ].map(({ label, value, bold, gold }) => (
@@ -370,7 +400,7 @@ export default function TransferPage() {
 
                 <GoldButton onClick={handleSend} loading={sending} size="lg" className="w-full">
                   <Send className="w-4 h-4" />
-                  Send {formatCurrency(parseFloat(amount || "0"))}
+                  Send {formatPence(poundsToPence(amount) ?? 0)}
                 </GoldButton>
               </motion.div>
             )}

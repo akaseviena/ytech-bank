@@ -3,17 +3,18 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
-import { formatCurrency, formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/utils";
+import { formatPence } from "@/lib/money";
+import { LABEL_TEXT } from "@/lib/ledger";
 import { CATEGORY_INFO } from "@/types";
 import EmptyState from "@/components/ui/EmptyState";
-import type { Transaction } from "@/types";
+import type { LedgerItem } from "@/types";
 
 interface RecentTransactionsProps {
-  transactions: Transaction[];
-  userId: string;
+  transactions: LedgerItem[];
 }
 
-export default function RecentTransactions({ transactions, userId }: RecentTransactionsProps) {
+export default function RecentTransactions({ transactions }: RecentTransactionsProps) {
   return (
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-4">
@@ -28,12 +29,9 @@ export default function RecentTransactions({ transactions, userId }: RecentTrans
       ) : (
         <div className="space-y-1">
           {transactions.map((tx, i) => {
-            const isSent = tx.sender_id === userId;
-            const categoryInfo = CATEGORY_INFO[tx.category] ?? CATEGORY_INFO.other;
-            const other = isSent ? tx.receiver : tx.sender;
-            const name = other
-              ? `${other.first_name} ${other.last_name}`
-              : isSent ? "External" : "Deposit";
+            const isSent = tx.direction === "sent";
+            const categoryInfo = CATEGORY_INFO[tx.category as keyof typeof CATEGORY_INFO] ?? CATEGORY_INFO.other;
+            const name = tx.counterparty.name;
 
             return (
               <motion.div
@@ -51,12 +49,14 @@ export default function RecentTransactions({ transactions, userId }: RecentTrans
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-[#1A1A1A] truncate">{name}</p>
-                  <p className="text-xs text-[#9B9B9B] font-medium">{formatRelativeTime(tx.created_at)}</p>
+                  <p className="text-xs text-[#9B9B9B] font-medium">
+                    {tx.label && tx.label !== "subscription" ? `${LABEL_TEXT[tx.label]} · ` : ""}{formatRelativeTime(tx.createdAt)}
+                  </p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className={`font-bold text-sm ${isSent ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
                     {isSent ? "-" : "+"}
-                    {formatCurrency(tx.amount)}
+                    {formatPence(tx.amountMinor)}
                   </p>
                   <div className={`flex items-center justify-end gap-0.5 ${isSent ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
                     {isSent ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownLeft className="w-3 h-3" />}

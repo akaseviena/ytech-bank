@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, Target, PiggyBank } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { formatPence, numericToPence, penceToPoundsString, poundsToPence } from "@/lib/money";
 import GoldButton from "@/components/ui/GoldButton";
 import type { SavingsGoal } from "@/types";
 import { useToast } from "@/components/ui/Toast";
@@ -12,7 +13,8 @@ import { useToast } from "@/components/ui/Toast";
 interface SavingsGoalsProps {
   goals: SavingsGoal[];
   userId: string;
-  userBalance: number;
+  /** Ledger balance in pence. Read-only here: goals are a mark, not a transfer. */
+  balanceMinor: number;
 }
 
 const LG_OVERLAY: React.CSSProperties = {
@@ -89,9 +91,8 @@ function GlassShine() {
   );
 }
 
-export default function SavingsGoals({ goals: initialGoals, userId, userBalance }: SavingsGoalsProps) {
+export default function SavingsGoals({ goals: initialGoals, userId, balanceMinor }: SavingsGoalsProps) {
   const [goals, setGoals] = useState<SavingsGoal[]>(initialGoals);
-  const [balance, setBalance] = useState(userBalance);
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [name, setName] = useState("");
@@ -127,28 +128,31 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
 
   async function handleAddFunds() {
     if (!fundsGoal || !fundsAmount) return;
-    const num = parseFloat(fundsAmount);
-    if (isNaN(num) || num <= 0) { setFundsError("Enter a valid amount"); return; }
-    if (num > balance) { setFundsError(`Insufficient balance (£${balance.toFixed(2)} available)`); return; }
+    const addPence = poundsToPence(fundsAmount);
+    if (addPence === null || addPence <= 0) { setFundsError("Enter a valid amount"); return; }
+    if (addPence > balanceMinor) { setFundsError(`Insufficient balance (${formatPence(balanceMinor)} available)`); return; }
 
-    const remaining = fundsGoal.target_amount - fundsGoal.current_amount;
-    if (num > remaining) { setFundsError(`Max you can add is £${remaining.toFixed(2)}`); return; }
+    // goal amounts are pound-valued numeric columns; compare and add in pence
+    const currentPence = numericToPence(fundsGoal.current_amount);
+    const remainingPence = numericToPence(fundsGoal.target_amount) - currentPence;
+    if (addPence > remainingPence) { setFundsError(`Max you can add is ${formatPence(remainingPence)}`); return; }
 
     setAddingFunds(true);
     setFundsError("");
     const supabase = createClient();
 
-    const [balRes, goalRes] = await Promise.all([
-      supabase.from("profiles").update({ balance: balance - num }).eq("id", userId),
-      supabase
-        .from("savings_goals")
-        .update({ current_amount: fundsGoal.current_amount + num })
-        .eq("id", fundsGoal.id)
-        .select()
-        .single(),
-    ]);
+    // A goal is a mark on top of the balance, not money moved out of it: this
+    // writes the goal only. It must never touch profiles.balance (the ledger
+    // owns the balance, and that column is being frozen). Moving real money
+    // into a goal needs a savings account on the ledger — a later task.
+    const goalRes = await supabase
+      .from("savings_goals")
+      .update({ current_amount: penceToPoundsString(currentPence + addPence) })
+      .eq("id", fundsGoal.id)
+      .select()
+      .single();
 
-    if (balRes.error || goalRes.error) {
+    if (goalRes.error) {
       setFundsError("Something went wrong. Please try again.");
       setAddingFunds(false);
       return;
@@ -156,8 +160,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
 
     const updatedGoal = goalRes.data as SavingsGoal;
     setGoals((prev) => prev.map((g) => (g.id === fundsGoal.id ? updatedGoal : g)));
-    setBalance((b) => b - num);
-    showToast("success", "Funds added!", `£${num.toFixed(2)} added to ${fundsGoal.name} ${fundsGoal.emoji}`);
+    showToast("success", "Funds added!", `${formatPence(addPence)} added to ${fundsGoal.name} ${fundsGoal.emoji}`);
     setFundsGoal(null);
     setFundsAmount("");
     setAddingFunds(false);
@@ -368,7 +371,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
                   <p className="mt-1.5 text-xs text-[#FF3B30] font-medium">{fundsError}</p>
                 )}
                 <p className="mt-1.5 text-xs text-[#9B9B9B] font-medium">
-                  Available balance: £{balance.toFixed(2)}
+                  Available balance: {formatPence(balanceMinor)}
                 </p>
               </div>
 
@@ -384,7 +387,7 @@ export default function SavingsGoals({ goals: initialGoals, userId, userBalance 
                   onClick={handleAddFunds}
                   loading={addingFunds}
                   className="flex-1"
-                  disabled={!fundsAmount || parseFloat(fundsAmount) <= 0}
+                  disabled={!fundsAmount || !((poundsToPence(fundsAmount) ?? 0) > 0)}
                   style={LG_CONFIRM}
                 >
                   Add funds

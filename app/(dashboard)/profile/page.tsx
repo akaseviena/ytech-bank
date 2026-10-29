@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { showToast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [accountRef, setAccountRef] = useState<string | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -48,11 +49,20 @@ export default function ProfilePage() {
       // Public profile fields only (no email/phone/date_of_birth)
       const { data } = await supabase
         .from("profiles")
-        .select("id,first_name,last_name,avatar_url,plan,balance,account_number,created_at,currency,card_frozen")
+        .select("id,first_name,last_name,avatar_url,plan,account_number,created_at,currency,card_frozen")
         .eq("id", user.id)
         .single();
       if (!data) return;
       setProfile(data as Profile);
+
+      // Public account reference lives on the ledger account (own row only, via RLS)
+      const { data: acct } = await supabase
+        .from("accounts")
+        .select("iban_display")
+        .eq("owner_id", user.id)
+        .eq("kind", "main")
+        .maybeSingle();
+      setAccountRef(acct?.iban_display ?? null);
 
       // phone + date_of_birth via server route (admin client)
       const res = await fetch("/api/profile");
@@ -192,7 +202,7 @@ export default function ProfilePage() {
             <div className="space-y-3">
               {[
                 { label: "Email", value: sessionEmail, icon: Mail },
-                { label: "Account Number", value: profile.account_number, icon: CreditCard },
+                { label: "Account", value: accountRef ?? "—", icon: CreditCard },
                 { label: "Member since", value: formatDate(profile.created_at), icon: Calendar },
               ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="flex items-center gap-3 p-3 rounded-2xl bg-[rgba(245,200,0,0.04)] border border-[rgba(245,200,0,0.1)]">

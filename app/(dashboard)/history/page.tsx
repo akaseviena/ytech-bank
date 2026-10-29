@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, ChevronDown, ChevronUp } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
 import EmptyState from "@/components/ui/EmptyState";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
-import { CATEGORY_INFO, type TransactionCategory, type Transaction } from "@/types";
+import { formatDateTime } from "@/lib/utils";
+import { formatPence } from "@/lib/money";
+import { LABEL_TEXT } from "@/lib/ledger";
+import { CATEGORY_INFO, type TransactionCategory, type LedgerItem } from "@/types";
 
 const PAGE_SIZE = 20;
 const STATUS_COLORS = { completed: "#34C759", pending: "#F5C800", failed: "#FF3B30" };
@@ -21,8 +22,7 @@ function HistoryContent() {
   const initialFilter: "all" | "sent" | "received" =
     urlFilter === "sent" || urlFilter === "received" ? urlFilter : "all";
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [userId, setUserId] = useState("");
+  const [transactions, setTransactions] = useState<LedgerItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -31,87 +31,36 @@ function HistoryContent() {
   const [filter, setFilter] = useState<"all" | "sent" | "received">(initialFilter);
   const [categoryFilter, setCategoryFilter] = useState<"all" | TransactionCategory>("all");
 
+  // One page of the person's ledger transfers, names already resolved by the
+  // server. Direction and category are filtered by the database; the text
+  // search runs on the page that came back, as it always did.
   const load = useCallback(async (reset = false) => {
-    const supabase = createClient();
-    if (!userId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-    }
-    const uid = userId || (await supabase.auth.getUser()).data.user?.id;
-    if (!uid) return;
-
     setLoading(true);
     const p = reset ? 0 : page;
+    const qs = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(p * PAGE_SIZE), direction: filter });
+    if (categoryFilter !== "all") qs.set("category", categoryFilter);
 
-    // Two parallel queries so null-receiver withdrawals (subscriptions/fees) are never dropped
-    // by an implicit INNER JOIN on the receiver profile.
-    const [transfersRes, withdrawalsRes] = await Promise.all([
-      supabase
-        .from("transactions")
-        .select("*, sender:profiles!sender_id(id,first_name,last_name,email,avatar_url), receiver:profiles!receiver_id(id,first_name,last_name,email,avatar_url)")
-        .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
-        .order("created_at", { ascending: false })
-        .range(p * PAGE_SIZE, (p + 1) * PAGE_SIZE - 1),
-      supabase
-        .from("transactions")
-        .select("*, sender:profiles!sender_id(id,first_name,last_name,email,avatar_url)")
-        .eq("sender_id", uid)
-        .is("receiver_id", null)
-        .order("created_at", { ascending: false })
-        .range(p * PAGE_SIZE, (p + 1) * PAGE_SIZE - 1),
-    ]);
+    const res = await fetch(`/api/history?${qs}`);
+    if (!res.ok) { setLoading(false); return; }
+    const data = (await res.json()) as { items: LedgerItem[]; hasMore: boolean };
 
-    const seenIds = new Set<string>();
-    const txs = [...(transfersRes.data ?? []), ...(withdrawalsRes.data ?? [])]
-      .filter((tx) => {
-        if (seenIds.has(tx.id)) return false;
-        seenIds.add(tx.id);
-        return categoryFilter === "all" || tx.category === categoryFilter;
-      })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, PAGE_SIZE) as Transaction[];
-
-    const filtered = txs.filter((tx) => {
-      const isWithdrawal = tx.type === "withdrawal" && tx.sender_id === uid && !tx.receiver_id;
-      if (filter === "sent" && tx.sender_id !== uid) return false;
-      // withdrawals with null receiver always count as "sent", never exclude them
-      if (filter === "received" && (tx.sender_id === uid && !isWithdrawal)) return false;
-      if (filter === "received" && isWithdrawal) return false;
-      if (search) {
-        const other = tx.sender_id === uid ? tx.receiver : tx.sender;
-        const displayName = other
-          ? `${other.first_name} ${other.last_name}`
-          : isWithdrawal
-          ? (tx.description ?? "Y-tech")
-          : "";
-        if (
-          !displayName.toLowerCase().includes(search.toLowerCase()) &&
-          !(tx.description ?? "").toLowerCase().includes(search.toLowerCase())
-        )
-          return false;
-      }
-      return true;
-    });
+    const needle = search.toLowerCase();
+    const filtered = data.items.filter((tx) =>
+      !needle ||
+      tx.counterparty.name.toLowerCase().includes(needle) ||
+      (tx.description ?? "").toLowerCase().includes(needle),
+    );
 
     if (reset) { setTransactions(filtered); setPage(1); }
     else { setTransactions((prev) => [...prev, ...filtered]); setPage(p + 1); }
-    setHasMore(txs.length === PAGE_SIZE);
+    setHasMore(data.hasMore);
     setLoading(false);
-  }, [userId, page, filter, categoryFilter, search]);
+  }, [page, filter, categoryFilter, search]);
 
   useEffect(() => {
-    (async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) { setUserId(user.id); }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (userId) load(true);
+    load(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, filter, categoryFilter, search]);
+  }, [filter, categoryFilter, search]);
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -160,17 +109,15 @@ function HistoryContent() {
         {/* Transaction list */}
         <div className="space-y-2">
           {transactions.map((tx, i) => {
-            const isSent = tx.sender_id === userId;
-            const isWithdrawal = tx.type === "withdrawal" && isSent && !tx.receiver_id;
-            const catInfo = CATEGORY_INFO[tx.category] ?? CATEGORY_INFO.other;
-            const other = isSent ? tx.receiver : tx.sender;
-            const name = other
-              ? `${other.first_name} ${other.last_name}`
-              : isWithdrawal
-              ? "Y-tech"
-              : isSent
-              ? "External"
-              : "Deposit";
+            const isSent = tx.direction === "sent";
+            const catInfo = CATEGORY_INFO[tx.category as TransactionCategory] ?? CATEGORY_INFO.other;
+            const name = tx.counterparty.name;
+            // welcome bonus / balance adjustment carry a fixed caption rather than
+            // the long posting text; the full text stays in the expanded note
+            const caption = tx.label === "welcome" || tx.label === "adjustment"
+              ? LABEL_TEXT[tx.label]
+              : tx.description || catInfo.label;
+            const kind = tx.label === "welcome" ? "deposit" : tx.label === "adjustment" ? "adjustment" : tx.label === "subscription" ? "withdrawal" : "transfer";
             const expanded = expandedId === tx.id;
 
             return (
@@ -190,16 +137,16 @@ function HistoryContent() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-inter font-semibold text-sm text-[#1A1A1A] truncate">{name}</p>
-                      <p className="font-inter text-xs text-[#9B9B9B] truncate">{tx.description || catInfo.label}</p>
-                      {isWithdrawal && (
-                        <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-md bg-[rgba(107,107,107,0.1)] text-[10px] font-inter font-medium text-[#9B9B9B]">Subscription</span>
+                      <p className="font-inter text-xs text-[#9B9B9B] truncate">{caption}</p>
+                      {tx.label && tx.label !== "subscription" && (
+                        <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-md bg-[rgba(107,107,107,0.1)] text-[10px] font-inter font-medium text-[#9B9B9B]">{LABEL_TEXT[tx.label]}</span>
                       )}
                     </div>
                     <div className="text-right flex-shrink-0 mr-2">
                       <p className={`font-sora font-bold text-sm ${isSent ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
-                        {isSent ? "-" : "+"}£{Number(tx.amount).toFixed(2)}
+                        {isSent ? "-" : "+"}{formatPence(tx.amountMinor)}
                       </p>
-                      <p className="font-inter text-[11px] text-[#9B9B9B]">{formatDateTime(tx.created_at).split(" · ")[0]}</p>
+                      <p className="font-inter text-[11px] text-[#9B9B9B]">{formatDateTime(tx.createdAt).split(" · ")[0]}</p>
                     </div>
                     <div className="flex-shrink-0">
                       {expanded ? <ChevronUp className="w-4 h-4 text-[#9B9B9B]" /> : <ChevronDown className="w-4 h-4 text-[#9B9B9B]" />}
@@ -218,8 +165,8 @@ function HistoryContent() {
                         <div className="p-4 grid grid-cols-2 gap-3">
                           {[
                             { label: "Transaction ID", value: tx.id.slice(0, 12) + "…" },
-                            { label: "Date & Time", value: formatDateTime(tx.created_at) },
-                            { label: "Type", value: tx.type },
+                            { label: "Date & Time", value: formatDateTime(tx.createdAt) },
+                            { label: "Type", value: kind },
                             { label: "Status", value: tx.status, color: STATUS_COLORS[tx.status] },
                             { label: "Category", value: `${catInfo.emoji} ${catInfo.label}` },
                             ...(tx.description ? [{ label: "Note", value: tx.description }] : []),

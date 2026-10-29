@@ -5,11 +5,17 @@ import { useEffect, useState } from "react";
 import { Send, Plus } from "lucide-react";
 import Link from "next/link";
 import type { Profile } from "@/types";
+import { formatPence } from "@/lib/money";
 
 interface BalanceCardProps {
   profile: Profile;
+  balanceMinor: number;
+  /** the person's public account reference (accounts.iban_display) */
+  accountRef: string | null;
 }
 
+// Animates over integer pence and formats at the edge, so no float is ever
+// shown as money. The tween value is rounded back to a whole penny first.
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0);
   const motionVal = useMotionValue(0);
@@ -24,9 +30,7 @@ function AnimatedNumber({ value }: { value: number }) {
   }, [value, motionVal]);
 
   return (
-    <span>
-      £{display.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-    </span>
+    <span>{formatPence(Math.round(display))}</span>
   );
 }
 
@@ -39,7 +43,7 @@ const PLAN_LABELS: Record<string, string> = {
   business: "Business",
 };
 
-export default function BalanceCard({ profile }: BalanceCardProps) {
+export default function BalanceCard({ profile, balanceMinor, accountRef }: BalanceCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -52,7 +56,7 @@ export default function BalanceCard({ profile }: BalanceCardProps) {
           <div>
             <p className="text-sm text-[#6B6B6B] mb-1 font-medium">Total Balance</p>
             <h2 className="font-bold text-4xl text-[#1A1A1A]">
-              <AnimatedNumber value={profile.balance} />
+              <AnimatedNumber value={balanceMinor} />
             </h2>
           </div>
           <span className="px-3 py-1 rounded-full text-xs font-bold gold-gradient text-[#3A2E00]">
@@ -61,7 +65,7 @@ export default function BalanceCard({ profile }: BalanceCardProps) {
         </div>
 
         <p className="text-xs text-[#9B9B9B] mb-5 font-medium">
-          Account: {profile.account_number}
+          Account: {accountRef ?? "—"}
         </p>
 
         <div className="flex gap-3">

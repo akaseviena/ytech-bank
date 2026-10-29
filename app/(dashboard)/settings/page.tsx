@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, AlertTriangle, X, Bell, Lock, LogOut, CreditCard } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -9,18 +9,13 @@ import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
 import { useToast } from "@/components/ui/Toast";
+import { formatPence, ledgerPence } from "@/lib/money";
+import { PLAN_PRICE_PENCE } from "@/lib/plans";
 import { PLAN_INFO, type Plan, type Profile } from "@/types";
 
-const plans = Object.values(PLAN_INFO);
+type SettingsProfile = Pick<Profile, "id" | "plan" | "first_name" | "last_name">;
 
-const PLAN_PRICE: Record<Plan, number> = {
-  basic:    0,
-  standard: 4.90,
-  travel:   9.90,
-  metal:    18.90,
-  ultimate: 44.90,
-  business: 40.00,
-};
+const plans = Object.values(PLAN_INFO);
 
 const LG_OVERLAY: React.CSSProperties = {
   background: "rgba(180, 180, 200, 0.2)",
@@ -99,8 +94,11 @@ function GlassShine() {
 export default function SettingsPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<SettingsProfile | null>(null);
+  const [balanceMinor, setBalanceMinor] = useState<number | null>(null);
   const [pendingPlan, setPendingPlan] = useState<Plan | null>(null);
+  // new id each time the confirm dialog opens: a double click is one request
+  const requestId = useRef<string>("");
   const [confirmingPlan, setConfirmingPlan] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [notifications, setNotifications] = useState({ transfers: true, promos: false, system: true });
@@ -110,13 +108,18 @@ export default function SettingsPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("id,balance,plan,first_name,last_name").eq("id", user.id).single();
-      if (data) setProfile(data as Profile);
+      const [{ data }, account] = await Promise.all([
+        supabase.from("profiles").select("id,plan,first_name,last_name").eq("id", user.id).single(),
+        supabase.from("account_balances").select("balance_minor").eq("owner_id", user.id).eq("kind", "main").maybeSingle(),
+      ]);
+      if (data) setProfile(data as SettingsProfile);
+      if (account.data) setBalanceMinor(ledgerPence(account.data.balance_minor));
     })();
   }, []);
 
   function handleSelectPlan(plan: Plan) {
     if (!profile || plan === profile.plan) return;
+    requestId.current = crypto.randomUUID();
     setPendingPlan(plan);
   }
 
@@ -124,13 +127,13 @@ export default function SettingsPage() {
     if (!profile || !pendingPlan) return;
     setConfirmingPlan(true);
 
-    const price = PLAN_PRICE[pendingPlan];
+    const price = PLAN_PRICE_PENCE[pendingPlan];
     const planName = PLAN_INFO[pendingPlan].name;
 
     const res = await fetch("/api/subscription", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: pendingPlan }),
+      body: JSON.stringify({ plan: pendingPlan, requestId: requestId.current }),
     });
 
     const result = await res.json();
@@ -144,8 +147,9 @@ export default function SettingsPage() {
       return;
     }
 
-    const newBalance = typeof result.newBalance === "number" ? result.newBalance : profile.balance - price;
-    setProfile((prev) => prev ? { ...prev, plan: pendingPlan, balance: newBalance } : prev);
+    if (typeof result.balanceMinor === "number") setBalanceMinor(result.balanceMinor);
+    else if (balanceMinor !== null) setBalanceMinor(balanceMinor - price);
+    setProfile((prev) => prev ? { ...prev, plan: pendingPlan } : prev);
     setPendingPlan(null);
     setConfirmingPlan(false);
     showToast("success", `Successfully switched to ${planName} plan!`);
@@ -160,7 +164,7 @@ export default function SettingsPage() {
   }
 
   const pendingPlanInfo = pendingPlan ? PLAN_INFO[pendingPlan] : null;
-  const pendingPrice = pendingPlan ? PLAN_PRICE[pendingPlan] : 0;
+  const pendingPrice = pendingPlan ? PLAN_PRICE_PENCE[pendingPlan] : 0;
 
   return (
     <PageTransition>
@@ -180,7 +184,7 @@ export default function SettingsPage() {
                   Currently on{" "}
                   <span className="text-[#F5C800] font-semibold">{PLAN_INFO[profile.plan].name}</span>
                   {" "}· Balance:{" "}
-                  <span className="font-semibold text-[#1A1A1A]">£{profile.balance.toFixed(2)}</span>
+                  <span className="font-semibold text-[#1A1A1A]">{balanceMinor === null ? "…" : formatPence(balanceMinor)}</span>
                 </p>
               )}
             </div>
@@ -331,15 +335,15 @@ export default function SettingsPage() {
                 </p>
                 {pendingPrice > 0 ? (
                   <p className="text-sm text-[#6B6B6B]">
-                    <span className="font-bold text-[#F5C800]">£{pendingPrice.toFixed(2)}</span>{" "}
+                    <span className="font-bold text-[#F5C800]">{formatPence(pendingPrice)}</span>{" "}
                     will be deducted from your balance
                   </p>
                 ) : (
                   <p className="text-sm text-[#6B6B6B]">You will be switched to the free plan</p>
                 )}
-                {profile && pendingPrice > 0 && (
+                {balanceMinor !== null && pendingPrice > 0 && (
                   <p className="text-xs text-[#9B9B9B] mt-2">
-                    Current balance: £{profile.balance.toFixed(2)} → £{(profile.balance - pendingPrice).toFixed(2)}
+                    Current balance: {formatPence(balanceMinor)} → {formatPence(balanceMinor - pendingPrice)}
                   </p>
                 )}
               </div>

@@ -30,7 +30,6 @@ export interface Profile {
   avatar_url: string | null;
   phone: string | null;
   plan: Plan;
-  balance: number;
   account_number: string;
   currency: string;
   card_frozen: boolean;
@@ -39,18 +38,36 @@ export interface Profile {
   updated_at: string;
 }
 
-export interface Transaction {
+/**
+ * A person you can pay, as returned by search_recipients and recent_recipients.
+ * Deliberately minimal: a ledger account id, a short display name ("Anna A."),
+ * the public account reference (IBAN-style) and an avatar. Nothing else about
+ * another person's row is handed to the browser.
+ */
+export interface Recipient {
+  /** the recipient's main ledger account — the p_to of post_transfer */
+  account_id: string;
+  display_name: string;
+  account_ref: string;
+  avatar_url: string | null;
+}
+
+export type LedgerStatus = "pending" | "completed" | "failed";
+/** welcome = rail 'promo', adjustment = rail 'migration', subscription = paid to bank_fees. */
+export type LedgerLabel = "welcome" | "adjustment" | "subscription";
+
+/** One transfer as the signed-in person sees it. Money is integer pence. */
+export interface LedgerItem {
   id: string;
-  sender_id: string | null;
-  receiver_id: string | null;
-  amount: number;
+  direction: "sent" | "received";
+  amountMinor: number;
   description: string | null;
-  category: TransactionCategory;
-  type: TransactionType;
-  status: TransactionStatus;
-  created_at: string;
-  sender?: Pick<Profile, "id" | "first_name" | "last_name" | "email" | "avatar_url">;
-  receiver?: Pick<Profile, "id" | "first_name" | "last_name" | "email" | "avatar_url">;
+  category: string;
+  rail: string;
+  status: LedgerStatus;
+  createdAt: string;
+  counterparty: { name: string; avatarUrl: string | null };
+  label: LedgerLabel | null;
 }
 
 export interface Notification {

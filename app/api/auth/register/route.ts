@@ -100,7 +100,6 @@ export async function POST(request: NextRequest) {
       date_of_birth: dateOfBirth || null,
       plan,
       account_number: accountNumber,
-      balance: 1000.0,
       currency: "GBP",
       card_frozen: false,
     },

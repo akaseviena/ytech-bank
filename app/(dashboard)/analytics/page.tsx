@@ -7,11 +7,10 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area, AreaChart
 } from "recharts";
 import { subDays, subMonths, subYears, format, startOfDay, eachDayOfInterval } from "date-fns";
-import { createClient } from "@/lib/supabase/client";
 import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
-import { formatCurrency } from "@/lib/utils";
-import { CATEGORY_INFO, type TransactionCategory, type Transaction } from "@/types";
+import { formatPence } from "@/lib/money";
+import { CATEGORY_INFO, type TransactionCategory, type LedgerItem } from "@/types";
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft, Activity } from "lucide-react";
 
 type Period = "week" | "month" | "3months" | "year";
@@ -36,61 +35,55 @@ function getStartDate(period: Period): Date {
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>("month");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [userId, setUserId] = useState("");
+  const [transactions, setTransactions] = useState<LedgerItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [balance, setBalance] = useState(0);
+  const [balanceMinor, setBalanceMinor] = useState(0);
 
+  // The whole period, oldest first, with names resolved by the server.
   useEffect(() => {
-    (async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-      const { data: profile } = await supabase.from("profiles").select("balance").eq("id", user.id).single();
-      setBalance(profile?.balance ?? 0);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return;
     (async () => {
       setLoading(true);
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("transactions")
-        .select("*, sender:profiles!sender_id(id,first_name,last_name), receiver:profiles!receiver_id(id,first_name,last_name)")
-        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-        .gte("created_at", getStartDate(period).toISOString())
-        .order("created_at", { ascending: true });
-      setTransactions((data ?? []) as Transaction[]);
+      const qs = new URLSearchParams({ limit: "1000", order: "asc", since: getStartDate(period).toISOString() });
+      const res = await fetch(`/api/history?${qs}`);
+      if (res.ok) {
+        const data = (await res.json()) as { items: LedgerItem[]; balanceMinor: number };
+        setTransactions(data.items);
+        setBalanceMinor(data.balanceMinor);
+      }
       setLoading(false);
     })();
-  }, [userId, period]);
+  }, [period]);
 
-  const sent = transactions.filter((t) => t.sender_id === userId);
-  const received = transactions.filter((t) => t.sender_id !== userId);
-  const totalSent = sent.reduce((s, t) => s + Number(t.amount), 0);
-  const totalReceived = received.reduce((s, t) => s + Number(t.amount), 0);
+  // Totals, categories and the top lists count what the person did: completed
+  // transfers, not the welcome bonus or balance adjustments. The balance chart
+  // below uses every posting, because those do move the balance.
+  const flows = transactions.filter(
+    (t) => t.status === "completed" && t.label !== "welcome" && t.label !== "adjustment",
+  );
+  const sent = flows.filter((t) => t.direction === "sent");
+  const received = flows.filter((t) => t.direction === "received");
+  const sumPence = (xs: LedgerItem[]) => xs.reduce((acc, t) => acc + t.amountMinor, 0);
+  const totalSent = sumPence(sent);
+  const totalReceived = sumPence(received);
   const netFlow = totalReceived - totalSent;
 
-  // Category breakdown
+  // Category breakdown, in integer pence
   const categoryMap: Partial<Record<TransactionCategory, number>> = {};
   sent.forEach((t) => {
     const c = t.category as TransactionCategory;
-    categoryMap[c] = (categoryMap[c] ?? 0) + Number(t.amount);
+    categoryMap[c] = (categoryMap[c] ?? 0) + t.amountMinor;
   });
   const categoryData = Object.entries(categoryMap)
     .map(([cat, value]) => ({
       name: CATEGORY_INFO[cat as TransactionCategory]?.label ?? cat,
-      value: Number(value.toFixed(2)),
+      value: value as number,
       emoji: CATEGORY_INFO[cat as TransactionCategory]?.emoji ?? "💳",
       color: CATEGORY_INFO[cat as TransactionCategory]?.color ?? "#9B9B9B",
     }))
     .sort((a, b) => b.value - a.value);
 
   // Balance over time — work BACKWARDS from the real current balance.
-  // For each day d, undo every transaction that happened AFTER that day:
+  // For each day d, undo every completed posting that happened AFTER that day:
   //   outgoing after d → add back (balance was higher before it left)
   //   incoming after d → subtract back (balance was lower before it arrived)
   const days = eachDayOfInterval({ start: getStartDate(period), end: new Date() });
@@ -98,27 +91,19 @@ export default function AnalyticsPage() {
     const endOfDay = new Date(day);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const txsAfter = transactions.filter(
-      (t) => new Date(t.created_at) > endOfDay
-    );
-
-    const sentAfter = txsAfter
-      .filter((t) => t.sender_id === userId)
-      .reduce((s, t) => s + Number(t.amount), 0);
-
-    const receivedAfter = txsAfter
-      .filter((t) => t.sender_id !== userId)
-      .reduce((s, t) => s + Number(t.amount), 0);
+    const after = transactions.filter((t) => t.status === "completed" && new Date(t.createdAt) > endOfDay);
+    const sentAfter = sumPence(after.filter((t) => t.direction === "sent"));
+    const receivedAfter = sumPence(after.filter((t) => t.direction === "received"));
 
     return {
       date: format(day, "MMM d"),
-      balance: Number((balance + sentAfter - receivedAfter).toFixed(2)),
+      balance: balanceMinor + sentAfter - receivedAfter, // pence
     };
   });
 
   // Top transactions
-  const top5Sent = [...sent].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5);
-  const top5Received = [...received].sort((a, b) => Number(b.amount) - Number(a.amount)).slice(0, 5);
+  const top5Sent = [...sent].sort((a, b) => b.amountMinor - a.amountMinor).slice(0, 5);
+  const top5Received = [...received].sort((a, b) => b.amountMinor - a.amountMinor).slice(0, 5);
 
   return (
     <PageTransition>
@@ -150,10 +135,10 @@ export default function AnalyticsPage() {
             {/* Overview stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "Total Spent", value: formatCurrency(totalSent), icon: ArrowUpRight, color: "#FF3B30" },
-                { label: "Total Received", value: formatCurrency(totalReceived), icon: ArrowDownLeft, color: "#34C759" },
-                { label: "Net Flow", value: formatCurrency(netFlow), icon: netFlow >= 0 ? TrendingUp : TrendingDown, color: netFlow >= 0 ? "#34C759" : "#FF3B30" },
-                { label: "Transactions", value: transactions.length.toString(), icon: Activity, color: "#F5C800" },
+                { label: "Total Spent", value: formatPence(totalSent), icon: ArrowUpRight, color: "#FF3B30" },
+                { label: "Total Received", value: formatPence(totalReceived), icon: ArrowDownLeft, color: "#34C759" },
+                { label: "Net Flow", value: formatPence(netFlow), icon: netFlow >= 0 ? TrendingUp : TrendingDown, color: netFlow >= 0 ? "#34C759" : "#FF3B30" },
+                { label: "Transactions", value: flows.length.toString(), icon: Activity, color: "#F5C800" },
               ].map(({ label, value, icon: Icon, color }) => (
                 <GlassCard key={label} hover className="p-4">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: `${color}15` }}>
@@ -190,7 +175,7 @@ export default function AnalyticsPage() {
                             <Cell key={i} fill={entry.color} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                        <Tooltip formatter={(v: number) => formatPence(v)} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4">
@@ -218,8 +203,8 @@ export default function AnalyticsPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#9B9B9B" }} interval="preserveStartEnd" />
-                    <YAxis tick={{ fontSize: 10, fill: "#9B9B9B" }} tickFormatter={(v) => `£${v}`} />
-                    <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                    <YAxis tick={{ fontSize: 10, fill: "#9B9B9B" }} tickFormatter={(v: number) => formatPence(v).replace(/\.00$/, "")} />
+                    <Tooltip formatter={(v: number) => formatPence(v)} />
                     <Area type="monotone" dataKey="balance" stroke="#F5C800" strokeWidth={2} fill="url(#balanceGrad)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -239,16 +224,16 @@ export default function AnalyticsPage() {
                   ) : (
                     <div className="space-y-3">
                       {txs.map((tx) => {
-                        const other = isSent ? tx.receiver : tx.sender;
-                        const name = other ? `${other.first_name} ${other.last_name}` : "Unknown";
+                        const name = tx.counterparty.name;
+                        const info = CATEGORY_INFO[tx.category as TransactionCategory];
                         return (
                           <div key={tx.id} className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0" style={{ background: `${CATEGORY_INFO[tx.category]?.color ?? "#9B9B9B"}18` }}>
-                              {CATEGORY_INFO[tx.category]?.emoji ?? "💳"}
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0" style={{ background: `${info?.color ?? "#9B9B9B"}18` }}>
+                              {info?.emoji ?? "💳"}
                             </div>
                             <p className="flex-1 font-inter text-sm text-[#1A1A1A] truncate">{name}</p>
                             <p className={`font-sora font-bold text-sm ${isSent ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
-                              {isSent ? "-" : "+"}£{Number(tx.amount).toFixed(2)}
+                              {isSent ? "-" : "+"}{formatPence(tx.amountMinor)}
                             </p>
                           </div>
                         );
