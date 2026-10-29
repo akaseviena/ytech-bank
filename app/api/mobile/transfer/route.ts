@@ -15,6 +15,12 @@ const schema = z.object({
 
 // RPC error codes that map to 400
 const BAD_REQUEST_CODES = new Set(["INSUFFICIENT_FUNDS", "INVALID_AMOUNT", "SAME_ACCOUNT", "CURRENCY_MISMATCH"]);
+const REFUSAL_TEXT: Record<string, string> = {
+  INSUFFICIENT_FUNDS: "Insufficient funds.",
+  INVALID_AMOUNT: "Invalid amount.",
+  SAME_ACCOUNT: "You cannot transfer to your own account.",
+  CURRENCY_MISMATCH: "The accounts use different currencies.",
+};
 // RPC error codes that map to 403 (identical message for both to avoid account enumeration)
 const FORBIDDEN_CODES = new Set(["FORBIDDEN", "NO_SUCH_ACCOUNT"]);
 
@@ -57,6 +63,22 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid_request", message: "Source account not found." }, { status: 400 });
   }
 
+  // This route calls post_transfer as service_role, which skips the database's
+  // own rule that a signed-in person may not pay a system account (bank_fees,
+  // bank_promo, bank_settlement). So the route has to enforce it itself:
+  // refuse a destination that is a system account — and answer exactly as for
+  // a destination that does not exist, so the response does not reveal which
+  // ids are system accounts.
+  const { data: destination } = await admin
+    .from("accounts")
+    .select("id, is_system")
+    .eq("id", toAccountId)
+    .maybeSingle();
+
+  if (!destination || destination.is_system) {
+    return Response.json({ error: "FORBIDDEN", message: "Transfer not permitted." }, { status: 403 });
+  }
+
   // Call post_transfer with service-role client; idempotency key passed through.
   // Param names must match the live function's real signature — p_from/p_to/
   // p_amount_minor/p_rail, not p_from_account_id/p_to_account_id/p_amount,
@@ -87,17 +109,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "upstream_error", message: msg }, { status: 500 });
   }
 
-  // Function return value path — check for application-level error in result
+  // Function return value path. post_transfer reports a refusal as
+  // { ok: false, code } — the field is `code`; there is no `error` or `message`
+  // in that payload, so the text below is ours.
   if (result && !result.ok) {
-    const code: string = result.error ?? "";
-    const msg: string = result.message ?? "Transfer failed.";
-    if (BAD_REQUEST_CODES.has(code)) {
-      return Response.json({ error: code, message: msg }, { status: 400 });
-    }
+    const code: string = result.code ?? "";
     if (FORBIDDEN_CODES.has(code)) {
       return Response.json({ error: "FORBIDDEN", message: "Transfer not permitted." }, { status: 403 });
     }
-    return Response.json({ error: code, message: msg }, { status: 400 });
+    if (BAD_REQUEST_CODES.has(code)) {
+      return Response.json({ error: code, message: REFUSAL_TEXT[code] ?? "Transfer failed." }, { status: 400 });
+    }
+    return Response.json({ error: code || "transfer_failed", message: "Transfer failed." }, { status: 400 });
   }
 
   // Record for rate limiting
