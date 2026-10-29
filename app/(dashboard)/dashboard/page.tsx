@@ -19,7 +19,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const [profileRes, account, goalsRes] = await Promise.all([
-    supabase.from("profiles").select("id,first_name,last_name,plan,account_number,card_frozen,card_color,created_at,currency").eq("id", user.id).single(),
+    supabase.from("profiles").select("id,first_name,last_name,plan,card_frozen,card_color,created_at,currency").eq("id", user.id).single(),
     getMyAccount(supabase, user.id),
     supabase.from("savings_goals").select("*").eq("user_id", user.id).order("created_at"),
   ]);
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
           <div className="space-y-6">
             <GlassCard className="p-5">
               <h3 className="font-bold text-base text-[#1A1A1A] mb-4">Virtual Card</h3>
-              <VirtualCard profile={profile} />
+              <VirtualCard profile={profile} accountId={account?.accountId ?? null} />
             </GlassCard>
           </div>
         </div>

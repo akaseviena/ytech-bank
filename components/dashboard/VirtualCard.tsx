@@ -7,10 +7,13 @@ import { Snowflake, Eye, EyeOff, Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { generateCardExpiry, getInitials } from "@/lib/utils";
 import type { Profile } from "@/types";
+import { demoCardNumber } from "@/lib/card";
 import { useToast } from "@/components/ui/Toast";
 
 interface VirtualCardProps {
   profile: Profile;
+  /** the person's ledger account id; the demo card number is derived from it */
+  accountId: string | null;
 }
 
 const CARD_STYLES = {
@@ -30,7 +33,7 @@ const CARD_STYLES = {
   },
 } as const;
 
-export default function VirtualCard({ profile }: VirtualCardProps) {
+export default function VirtualCard({ profile, accountId }: VirtualCardProps) {
   const router = useRouter();
   const [showNumber, setShowNumber] = useState(false);
   const [showCvv, setShowCvv] = useState(false);
@@ -109,8 +112,12 @@ export default function VirtualCard({ profile }: VirtualCardProps) {
       next ? "Your card has been frozen." : "Your card is now active.");
   }
 
-  const cardDigits = profile.account_number.replace(/\D/g, "").padEnd(16, "0");
-  const maskedNumber = showNumber
+  // A stand-in number (lib/card.ts): derived from the ledger account id, starts
+  // with 0 and fails the Luhn check on purpose. Not from any public identifier.
+  const cardDigits = accountId ? demoCardNumber(accountId) : null;
+  const maskedNumber = !cardDigits
+    ? "•••• •••• •••• ••••"
+    : showNumber
     ? `${cardDigits.slice(0, 4)} ${cardDigits.slice(4, 8)} ${cardDigits.slice(8, 12)} ${cardDigits.slice(12, 16)}`
     : `•••• •••• •••• ${cardDigits.slice(-4)}`;
   const expiry = generateCardExpiry(profile.created_at);
