@@ -5,6 +5,7 @@ import { encodeEvent, sseHeaders } from "@/lib/mobile/sse";
 import { checkAiRateLimit, recordUsage } from "@/lib/mobile/rate-limit";
 import { buildAssistantContext } from "@/lib/mobile/financial-context";
 import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/mobile/prompts";
+import { windowHistory, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -67,11 +68,12 @@ export async function POST(request: Request) {
     conversationId = crypto.randomUUID();
   }
 
-  // Build Anthropic history from stored messages
-  const history = storedMessages.map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
+  // What the model is sent is a window of the saved conversation (lib/history-window.ts);
+  // storedMessages and updatedMessages below stay whole, so nothing is lost from the database.
+  const history = windowHistory(
+    storedMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ASSISTANT_HISTORY_WINDOW,
+  );
 
   // Persist user message before streaming
   const userTimestamp = new Date().toISOString();

@@ -5,6 +5,7 @@ import { encodeEvent, sseHeaders } from "@/lib/mobile/sse";
 import { checkAiRateLimit, recordUsage } from "@/lib/mobile/rate-limit";
 import { buildAgentContext, type MobileAgentId } from "@/lib/mobile/financial-context";
 import { AGENT_PROMPTS } from "@/lib/mobile/prompts";
+import { windowHistory, AGENT_HISTORY_WINDOW } from "@/lib/history-window";
 import type { Plan } from "@/types";
 
 export const runtime = "nodejs";
@@ -118,10 +119,13 @@ export async function POST(request: Request) {
     conversationId = crypto.randomUUID();
   }
 
-  const history = storedMessages.map((m) => ({
-    role: m.role as "user" | "assistant",
-    content: m.content,
-  }));
+  // What the model is sent is a window of the saved conversation (lib/history-window.ts),
+  // wider than the main assistant's because the person revises a document with the agent
+  // round after round. storedMessages and updatedMessages stay whole in the database.
+  const history = windowHistory(
+    storedMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    AGENT_HISTORY_WINDOW,
+  );
 
   // Persist user message before streaming
   const userTimestamp = new Date().toISOString();
