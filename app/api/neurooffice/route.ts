@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan } from "@/types";
 import { subMonths, startOfMonth } from "date-fns";
 import { sanitizeTransactionText } from "@/lib/sanitize-transaction-text";
+import { windowHistory, AGENT_HISTORY_WINDOW } from "@/lib/history-window";
 import { loadAssistantLedger, totals, categoryLine, type TransferRow } from "@/lib/ledger";
 import { formatPence, ledgerPence } from "@/lib/money";
 
@@ -283,10 +284,15 @@ Recent transactions logged: ${recentTxs.length}`;
     }
 
     // 8. Call Anthropic with financial context prepended to system prompt
-    const history = (conversationHistory ?? []).map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
+    // The browser sends the whole conversation; the agent gets a window of it
+    // (lib/history-window.ts, the wider agent window — people revise a document
+    // with an agent round after round). Within the window the cache below keeps
+    // reading the older part; past it the window slides each turn and the history
+    // is re-sent at full price.
+    const history = windowHistory(
+      (conversationHistory ?? []).map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      AGENT_HISTORY_WINDOW,
+    );
 
     console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-5-20250929, history:", history.length, "max_tokens:", MAX_TOKENS[agentType]);
 

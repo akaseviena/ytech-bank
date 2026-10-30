@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { subMonths, startOfMonth } from "date-fns";
 import { sanitizeTransactionText } from "@/lib/sanitize-transaction-text";
+import { windowHistory, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
 import { loadAssistantLedger, totals, categoryLine, type TransferRow } from "@/lib/ledger";
 import { formatPence, ledgerPence } from "@/lib/money";
 
@@ -153,10 +154,15 @@ ${recentTxStr || "None"}
 
 Savings goals: ${goalsStr}`;
 
-  const history: Anthropic.Messages.MessageParam[] = (conversationHistory ?? []).map((h) => ({
-    role: h.role,
-    content: h.content,
-  }));
+  // The browser sends the whole conversation; the model gets a window of it
+  // (lib/history-window.ts, same constants as the mobile assistant). While the
+  // conversation fits the window the older part is stable and the cache below
+  // keeps reading it; once it is longer, the window slides every turn and the
+  // history is re-sent at full price — bounded, but no longer cached.
+  const history: Anthropic.Messages.MessageParam[] = windowHistory(
+    (conversationHistory ?? []).map((h) => ({ role: h.role, content: h.content })),
+    ASSISTANT_HISTORY_WINDOW,
+  );
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-5-20250929",
