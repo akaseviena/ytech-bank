@@ -49,7 +49,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   // response cannot be used to find out which ids exist.
   const { data, error } = await admin
     .from("ai_conversations")
-    .select("messages, updated_at")
+    .select("messages, updated_at, agent_id")
     .eq("id", id.data)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -69,6 +69,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
   return Response.json({
     conversationId: id.data,
+    agentId: data.agent_id ?? null,
     total,
     updatedAt: data.updated_at,
     messages: all.slice(start, end).map((m, i) => ({

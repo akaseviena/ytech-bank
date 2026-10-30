@@ -105,6 +105,9 @@ export async function POST(request: Request) {
       .select("messages")
       .eq("id", conversationId)
       .eq("user_id", user.id)
+      // a conversation belongs to one agent: another agent's (or the main
+      // assistant's) is not continued here — it falls through to a fresh id
+      .eq("agent_id", agentId)
       .single();
     if (data) {
       storedMessages = (data.messages as StoredMessage[]) ?? [];
@@ -129,6 +132,7 @@ export async function POST(request: Request) {
   await admin.from("ai_conversations").upsert({
     id: conversationId,
     user_id: user.id,
+    agent_id: agentId,
     messages: updatedMessages,
     updated_at: userTimestamp,
   });

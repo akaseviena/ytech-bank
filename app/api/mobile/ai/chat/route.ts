@@ -54,6 +54,9 @@ export async function POST(request: Request) {
       .select("messages")
       .eq("id", conversationId)
       .eq("user_id", user.id)
+      // the main assistant has no agent: a conversation stamped with an agent
+      // is not continued here — it falls through to a fresh id
+      .is("agent_id", null)
       .single();
     if (data) {
       storedMessages = (data.messages as StoredMessage[]) ?? [];
