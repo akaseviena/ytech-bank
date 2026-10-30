@@ -5,13 +5,13 @@ import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan } from 
 import { subMonths, startOfMonth } from "date-fns";
 import { sanitizeTransactionText } from "@/lib/sanitize-transaction-text";
 import { windowHistory, AGENT_HISTORY_WINDOW } from "@/lib/history-window";
+import { DAILY_LIMIT } from "@/lib/daily-limit";
 import { loadAssistantLedger, totals, categoryLine, type TransferRow } from "@/lib/ledger";
 import { formatPence, ledgerPence } from "@/lib/money";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const DAILY_LIMIT = 50;
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 

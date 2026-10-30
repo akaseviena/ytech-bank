@@ -6,7 +6,8 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export const DAILY_LIMIT = 50;
+import { DAILY_LIMIT } from "@/lib/daily-limit";
+export { DAILY_LIMIT };
 
 interface DailyUsageContextType {
   dailyCount: number | null; // null while the initial DB fetch is in-flight

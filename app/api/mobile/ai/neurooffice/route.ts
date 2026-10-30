@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { requireUser, admin } from "@/lib/mobile/auth";
+import { getDailyUsage, recordDailyUse, secondsUntilReset } from "@/lib/mobile/daily-usage";
 import { encodeEvent, sseHeaders } from "@/lib/mobile/sse";
 import { checkAiRateLimit, recordUsage } from "@/lib/mobile/rate-limit";
 import { buildAgentContext, type MobileAgentId } from "@/lib/mobile/financial-context";
@@ -89,6 +90,16 @@ export async function POST(request: Request) {
     return Response.json(
       { error: "plan_required", message: `The ${agentId} agent requires an Ultimate or Business plan.` },
       { status: 403 },
+    );
+  }
+
+  // Daily message limit, shared with the web (lib/daily-limit.ts). Checked before
+  // anything is saved, so a refused request leaves no trace.
+  const daily = await getDailyUsage(user.id);
+  if (daily.used >= daily.limit) {
+    return Response.json(
+      { error: "daily_limit", message: "Daily message limit reached.", ...daily },
+      { status: 429, headers: { "Retry-After": String(secondsUntilReset()) } },
     );
   }
 
@@ -209,7 +220,10 @@ export async function POST(request: Request) {
           updated_at: assistantTimestamp,
         }).eq("id", conversationId).eq("user_id", user.id);
 
-        enq("done", { stopReason: finalMsg.stop_reason });
+        // Count this reply and hand the new figure back, so the screen's counter
+        // updates without a second request.
+        const counted = await recordDailyUse(user.id, daily.used);
+        enq("done", { stopReason: finalMsg.stop_reason, ...counted });
         controller.close();
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
