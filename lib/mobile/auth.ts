@@ -1,10 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
+import { noStoreFetch } from "@/lib/supabase/no-store-fetch";
 
 export const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false, autoRefreshToken: false } },
+  { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: noStoreFetch } },
 );
 
 export async function requireUser(req: Request): Promise<User | null> {
