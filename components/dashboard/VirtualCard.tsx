@@ -1,19 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Snowflake, Eye, EyeOff, Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { generateCardExpiry, getInitials } from "@/lib/utils";
 import type { Profile, CardInfo } from "@/types";
-import { demoCardNumber } from "@/lib/card";
 import { useToast } from "@/components/ui/Toast";
 
 interface VirtualCardProps {
   profile: Profile;
-  /** the person's ledger account id; the demo card number is derived from it */
-  accountId: string | null;
   /** from card_get(); null if the person has no card yet */
   card: CardInfo | null;
 }
@@ -35,13 +31,25 @@ const CARD_STYLES = {
   },
 } as const;
 
-export default function VirtualCard({ profile, accountId, card: initialCard }: VirtualCardProps) {
+export default function VirtualCard({ profile, card: initialCard }: VirtualCardProps) {
   const router = useRouter();
   const [showNumber, setShowNumber] = useState(false);
   const [showCvv, setShowCvv] = useState(false);
   const [card, setCard] = useState<CardInfo | null>(initialCard);
   const frozen = card?.status === "frozen";
   const [freezing, setFreezing] = useState(false);
+
+  // The full number and the CVC are never part of this page, not even in what the
+  // server renders: the page holds the last four digits, the expiry and the name.
+  // The rest comes from the database function card_reveal when the person asks,
+  // is kept only while it is shown, and is dropped again when hidden or after 30s.
+  const [secret, setSecret] = useState<{ number: string; cvc: string } | null>(null);
+  const [revealing, setRevealing] = useState(false);
+  useEffect(() => {
+    if (!secret) return;
+    const t = setTimeout(() => { setSecret(null); setShowNumber(false); setShowCvv(false); }, 30_000);
+    return () => clearTimeout(t);
+  }, [secret]);
   const [cardColor, setCardColor] = useState<"yellow" | "blue">(profile.card_color ?? "yellow");
   const [savingColor, setSavingColor] = useState(false);
   const { showToast } = useToast();
@@ -116,15 +124,53 @@ export default function VirtualCard({ profile, accountId, card: initialCard }: V
       next ? "Your card has been frozen." : "Your card is now active.");
   }
 
-  // A stand-in number (lib/card.ts): derived from the ledger account id, starts
-  // with 0 and fails the Luhn check on purpose. Not from any public identifier.
-  const cardDigits = accountId ? demoCardNumber(accountId) : null;
-  const maskedNumber = !cardDigits
-    ? "•••• •••• •••• ••••"
-    : showNumber
-    ? `${cardDigits.slice(0, 4)} ${cardDigits.slice(4, 8)} ${cardDigits.slice(8, 12)} ${cardDigits.slice(12, 16)}`
-    : `•••• •••• •••• ${cardDigits.slice(-4)}`;
-  const expiry = generateCardExpiry(profile.created_at);
+  // What the card face shows is the person's real card, from card_get().
+  const maskedNumber =
+    showNumber && secret
+      ? secret.number.replace(/(\d{4})(?=\d)/g, "$1 ")
+      : `•••• •••• •••• ${card?.last4 ?? "••••"}`;
+  const expiry = card
+    ? `${String(card.expiry_month).padStart(2, "0")}/${String(card.expiry_year % 100).padStart(2, "0")}`
+    : "--/--";
+  const holder = card?.holder_name.trim() || `${profile.first_name} ${profile.last_name}`.trim();
+
+  /** One presence token buys one card_reveal; both are database functions that check the person. */
+  async function fetchSecret(): Promise<{ number: string; cvc: string } | null> {
+    const supabase = createClient();
+    const fail = (message?: string) => showToast("error", "Couldn't reveal card", message ?? "Please try again.");
+    const t = await supabase.rpc("card_presence_token");
+    // card_presence_token() returns the token as a bare string.
+    const token = typeof t.data === "string" ? t.data : undefined;
+    if (t.error || !token) { fail(t.error?.message); return null; }
+    const r = await supabase.rpc("card_reveal", { p_card_id: card!.card_id, p_presence_token: token });
+    if (r.error || !r.data) { fail(r.error?.message); return null; }
+    return { number: r.data.number, cvc: r.data.cvc };
+  }
+
+  async function reveal(which: "number" | "cvv") {
+    if (revealing) return;
+    if (!card) {
+      showToast("error", "No card yet", "Your card isn't ready yet. Please try again later.");
+      return;
+    }
+    const shown = which === "number" ? showNumber : showCvv;
+    const otherShown = which === "number" ? showCvv : showNumber;
+    const setShown = which === "number" ? setShowNumber : setShowCvv;
+    if (shown) {                       // hide it; drop the secret once nothing is showing
+      setShown(false);
+      if (!otherShown) setSecret(null);
+      return;
+    }
+    let s = secret;
+    if (!s) {
+      setRevealing(true);
+      s = await fetchSecret();
+      setRevealing(false);
+      if (!s) return;
+      setSecret(s);
+    }
+    setShown(true);
+  }
 
   return (
     <div className="space-y-4">
@@ -177,7 +223,7 @@ export default function VirtualCard({ profile, accountId, card: initialCard }: V
               <div>
                 <p className="text-[10px] uppercase tracking-wider mb-0.5 font-medium" style={{ color: style.textMuted }}>Cardholder</p>
                 <p className="font-bold text-sm" style={{ color: style.text }}>
-                  {profile.first_name} {profile.last_name}
+                  {holder}
                 </p>
               </div>
               <div className="text-right">
@@ -197,9 +243,9 @@ export default function VirtualCard({ profile, accountId, card: initialCard }: V
       <div className="grid grid-cols-4 gap-2">
         {[
           { label: "Freeze", icon: Snowflake, onClick: toggleFreeze, active: frozen, loading: freezing },
-          { label: showCvv ? "Hide CVV" : "Show CVV", icon: Eye, onClick: () => setShowCvv(!showCvv) },
+          { label: showCvv ? "Hide CVV" : "Show CVV", icon: Eye, onClick: () => reveal("cvv"), loading: revealing },
           { label: "Apple Pay", icon: Smartphone, onClick: () => {} },
-          { label: showNumber ? "Hide" : "Reveal", icon: showNumber ? EyeOff : Eye, onClick: () => setShowNumber(!showNumber) },
+          { label: showNumber ? "Hide" : "Reveal", icon: showNumber ? EyeOff : Eye, onClick: () => reveal("number"), loading: revealing },
         ].map(({ label, icon: Icon, onClick, active, loading }) => (
           <motion.button
             key={label}
@@ -225,7 +271,7 @@ export default function VirtualCard({ profile, accountId, card: initialCard }: V
           { label: "Type", value: "Virtual Debit" },
           { label: "Status", value: frozen ? "● Frozen" : "● Active", color: frozen ? "text-blue-500" : "text-[#34C759]" },
           { label: "Daily Limit", value: "£1,000" },
-          { label: "CVV", value: showCvv ? "123" : "•••" },
+          { label: "CVV", value: showCvv && secret ? secret.cvc : "•••" },
         ].map(({ label, value, color }) => (
           <div key={label} className="flex justify-between items-center text-sm">
             <span className="text-[#6B6B6B] font-medium">{label}</span>
