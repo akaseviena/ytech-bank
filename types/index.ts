@@ -49,6 +49,12 @@ export interface Recipient {
   display_name: string;
   account_ref: string;
   avatar_url: string | null;
+  /**
+   * recent_recipients only: true for someone the person has already paid, false for
+   * the filler the function adds so a new person is not shown an empty list.
+   * Absent from search_recipients, and from the function before it carried the column.
+   */
+  is_recent?: boolean;
 }
 
 export type LedgerStatus = "pending" | "completed" | "failed";

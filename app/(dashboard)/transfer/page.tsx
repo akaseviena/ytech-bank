@@ -256,13 +256,26 @@ export default function TransferPage() {
                 </div>
                 {query.length === 0 && (
                   <>
-                    <p className="text-xs font-inter font-semibold text-[#9B9B9B] uppercase tracking-wider mb-2">All recipients</p>
                     {loadingRecent && <p className="text-sm text-[#9B9B9B] font-inter text-center py-4">Loading…</p>}
                     {!loadingRecent && recentResults.length > 0 && (
-                      <div className="space-y-2 max-h-80 overflow-y-auto">
-                        {recentResults.map((u) => (
-                          <RecipientRow key={u.account_id} u={u} onSelect={() => { setRecipient(u); setStep(2); }} />
-                        ))}
+                      <div className="space-y-4 max-h-80 overflow-y-auto">
+                        {/* Two sections so nobody wonders why strangers are listed. Only an explicit
+                            false is filler; a row without the column (or true) is someone already paid. */}
+                        {[
+                          { title: "Recent", people: recentResults.filter((u) => u.is_recent !== false) },
+                          { title: "Everyone else", people: recentResults.filter((u) => u.is_recent === false) },
+                        ]
+                          .filter((section) => section.people.length > 0)
+                          .map((section) => (
+                            <div key={section.title}>
+                              <p className="text-xs font-inter font-semibold text-[#9B9B9B] uppercase tracking-wider mb-2">{section.title}</p>
+                              <div className="space-y-2">
+                                {section.people.map((u) => (
+                                  <RecipientRow key={u.account_id} u={u} onSelect={() => { setRecipient(u); setStep(2); }} />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     )}
                     {!loadingRecent && recentResults.length === 0 && (
