@@ -266,7 +266,7 @@ export default function TransferPage() {
                       </div>
                     )}
                     {!loadingRecent && recentResults.length === 0 && (
-                      <p className="text-sm text-[#9B9B9B] font-inter text-center py-8">No recipients yet</p>
+                      <p className="text-sm text-[#9B9B9B] font-inter text-center py-8">Find someone by name or account reference</p>
                     )}
                   </>
                 )}
