@@ -49,7 +49,7 @@ export default function ProfilePage() {
       // Public profile fields only (no email/phone/date_of_birth)
       const { data } = await supabase
         .from("profiles")
-        .select("id,first_name,last_name,avatar_url,plan,account_number,created_at,currency,card_frozen")
+        .select("id,first_name,last_name,avatar_url,plan,account_number,created_at,currency")
         .eq("id", user.id)
         .single();
       if (!data) return;

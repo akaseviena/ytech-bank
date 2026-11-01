@@ -10,7 +10,7 @@ import SavingsGoals from "@/components/dashboard/SavingsGoals";
 import GlassCard from "@/components/ui/GlassCard";
 import { formatPence } from "@/lib/money";
 import { fetchTransfers, getMyAccount, resolveCounterparties, toItems, totals } from "@/lib/ledger";
-import type { Profile, SavingsGoal } from "@/types";
+import type { Profile, SavingsGoal, CardInfo } from "@/types";
 import { ArrowUpRight, ArrowDownLeft, Activity } from "lucide-react";
 
 export default async function DashboardPage() {
@@ -18,11 +18,15 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [profileRes, account, goalsRes] = await Promise.all([
-    supabase.from("profiles").select("id,first_name,last_name,plan,card_frozen,card_color,created_at,currency").eq("id", user.id).single(),
+  const [profileRes, account, goalsRes, cardRes] = await Promise.all([
+    supabase.from("profiles").select("id,first_name,last_name,plan,card_color,created_at,currency").eq("id", user.id).single(),
     getMyAccount(supabase, user.id),
     supabase.from("savings_goals").select("*").eq("user_id", user.id).order("created_at"),
+    // Whether the card is frozen lives on the card (cards.status), read through card_get().
+    supabase.rpc("card_get"),
   ]);
+  if (cardRes.error) console.error("[dashboard] card_get failed:", cardRes.error);
+  const card = (cardRes.error ? null : cardRes.data) as CardInfo | null;
 
   if (!profileRes.data) redirect("/login");
 
@@ -104,7 +108,7 @@ export default async function DashboardPage() {
           <div className="space-y-6">
             <GlassCard className="p-5">
               <h3 className="font-bold text-base text-[#1A1A1A] mb-4">Virtual Card</h3>
-              <VirtualCard profile={profile} accountId={account?.accountId ?? null} />
+              <VirtualCard profile={profile} accountId={account?.accountId ?? null} card={card} />
             </GlassCard>
           </div>
         </div>

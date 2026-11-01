@@ -32,7 +32,6 @@ export interface Profile {
   plan: Plan;
   account_number: string;
   currency: string;
-  card_frozen: boolean;
   card_color: "yellow" | "blue";
   created_at: string;
   updated_at: string;
@@ -68,6 +67,19 @@ export interface LedgerItem {
   createdAt: string;
   counterparty: { name: string; avatarUrl: string | null };
   label: LedgerLabel | null;
+}
+
+/**
+ * The person's card as card_get() and card_set_frozen() return it: masked, never
+ * the number or the CVC. cards.status is where freezing lives ("active" | "frozen").
+ */
+export interface CardInfo {
+  card_id: string;
+  status: string;
+  last4: string;
+  expiry_month: number;
+  expiry_year: number;
+  holder_name: string;
 }
 
 export interface Notification {

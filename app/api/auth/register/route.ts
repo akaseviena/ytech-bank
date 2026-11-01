@@ -101,7 +101,6 @@ export async function POST(request: NextRequest) {
       plan,
       account_number: accountNumber,
       currency: "GBP",
-      card_frozen: false,
     },
     { onConflict: "id" }
   );

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Snowflake, Eye, EyeOff, Smartphone } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { generateCardExpiry, getInitials } from "@/lib/utils";
-import type { Profile } from "@/types";
+import type { Profile, CardInfo } from "@/types";
 import { demoCardNumber } from "@/lib/card";
 import { useToast } from "@/components/ui/Toast";
 
@@ -14,6 +14,8 @@ interface VirtualCardProps {
   profile: Profile;
   /** the person's ledger account id; the demo card number is derived from it */
   accountId: string | null;
+  /** from card_get(); null if the person has no card yet */
+  card: CardInfo | null;
 }
 
 const CARD_STYLES = {
@@ -33,11 +35,12 @@ const CARD_STYLES = {
   },
 } as const;
 
-export default function VirtualCard({ profile, accountId }: VirtualCardProps) {
+export default function VirtualCard({ profile, accountId, card: initialCard }: VirtualCardProps) {
   const router = useRouter();
   const [showNumber, setShowNumber] = useState(false);
   const [showCvv, setShowCvv] = useState(false);
-  const [frozen, setFrozen] = useState(profile.card_frozen);
+  const [card, setCard] = useState<CardInfo | null>(initialCard);
+  const frozen = card?.status === "frozen";
   const [freezing, setFreezing] = useState(false);
   const [cardColor, setCardColor] = useState<"yellow" | "blue">(profile.card_color ?? "yellow");
   const [savingColor, setSavingColor] = useState(false);
@@ -76,27 +79,26 @@ export default function VirtualCard({ profile, accountId }: VirtualCardProps) {
 
   async function toggleFreeze() {
     if (freezing) return;
-    const next = !frozen;
+    if (!card) {
+      showToast("error", "No card yet", "Your card isn't ready yet. Please try again later.");
+      return;
+    }
+    const previous = card;
+    const next = card.status !== "frozen";
 
     // Optimistic — flip now, revert below if the write doesn't land.
-    setFrozen(next);
+    setCard({ ...card, status: next ? "frozen" : "active" });
     setFreezing(true);
 
+    // Freezing is a database function: it checks the card belongs to the signed-in
+    // person and returns the card as it now stands. (Nothing writes cards directly.)
     const supabase = createClient();
-    // The .select().single() is load-bearing: without it supabase-js resolves
-    // with error === null even when RLS filtered the update to zero rows, so a
-    // silently rejected write would look like it succeeded until the next load.
-    const { data, error } = await supabase
-      .from("profiles")
-      .update({ card_frozen: next })
-      .eq("id", profile.id)
-      .select("card_frozen")
-      .single();
+    const { data, error } = await supabase.rpc("card_set_frozen", { p_card_id: card.card_id, p_frozen: next });
 
     setFreezing(false);
 
     if (error || !data) {
-      setFrozen(!next); // revert the optimistic flip
+      setCard(previous); // revert the optimistic flip
       console.error("[VirtualCard] freeze toggle failed:", error);
       showToast(
         "error",
@@ -106,8 +108,10 @@ export default function VirtualCard({ profile, accountId }: VirtualCardProps) {
       return;
     }
 
-    // Trust the row the DB actually wrote, not our guess.
-    setFrozen(data.card_frozen);
+    // Trust the card the database returned, not our guess.
+    setCard(data as CardInfo);
+    // Without this, going away and back can show the dashboard as it was before this change.
+    router.refresh();
     showToast("info", next ? "Card frozen" : "Card unfrozen",
       next ? "Your card has been frozen." : "Your card is now active.");
   }

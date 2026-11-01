@@ -12,7 +12,7 @@ import SuccessAnimation from "@/components/ui/SuccessAnimation";
 import FrozenCardModal from "@/components/ui/FrozenCardModal";
 import { useToast } from "@/components/ui/Toast";
 import { formatPence, ledgerPence, poundsToPence } from "@/lib/money";
-import { CATEGORY_INFO, type TransactionCategory, type Recipient } from "@/types";
+import { CATEGORY_INFO, type TransactionCategory, type Recipient, type CardInfo } from "@/types";
 
 const QUICK_AMOUNTS = [10, 25, 50, 100, 200];
 
@@ -74,6 +74,7 @@ export default function TransferPage() {
   // The signed-in person's ledger account: id to pay from, balance in pence.
   const [me, setMe] = useState<{ userId: string; accountId: string; balanceMinor: number } | null>(null);
   const [frozen, setFrozen] = useState(false);
+  const [cardId, setCardId] = useState<string | null>(null);
   const [showFrozenModal, setShowFrozenModal] = useState(false);
   const [unfreezing, setUnfreezing] = useState(false);
 
@@ -91,11 +92,13 @@ export default function TransferPage() {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const [profile, account] = await Promise.all([
-        supabase.from("profiles").select("card_frozen").eq("id", user.id).single(),
+      const [card, account] = await Promise.all([
+        supabase.rpc("card_get"),
         supabase.from("account_balances").select("account_id,balance_minor").eq("owner_id", user.id).eq("kind", "main").maybeSingle(),
       ]);
-      setFrozen(Boolean(profile.data?.card_frozen));
+      const cardInfo = (card.error ? null : card.data) as CardInfo | null;
+      setFrozen(cardInfo?.status === "frozen");
+      setCardId(cardInfo?.card_id ?? null);
       if (account.data) {
         setMe({ userId: user.id, accountId: account.data.account_id, balanceMinor: ledgerPence(account.data.balance_minor) });
       }
@@ -142,7 +145,7 @@ export default function TransferPage() {
     if (pence === null) return;
     // A frozen card stops card payments, not transfers between people, but the
     // product still asks the person to unfreeze first. This is an interface
-    // prompt only: post_transfer does not know about card_frozen (decided).
+    // prompt only: post_transfer does not know about the card (decided).
     if (frozen) { setShowFrozenModal(true); return; }
     await performTransfer(pence);
   }
@@ -172,17 +175,11 @@ export default function TransferPage() {
   }
 
   async function handleUnfreezeAndContinue() {
-    if (!me || unfreezing) return;
+    if (!me || !cardId || unfreezing) return;
     setUnfreezing(true);
     const supabase = createClient();
-    // .select().single() so an RLS-filtered zero-row update surfaces as an
-    // error rather than a silent no-op (see VirtualCard.toggleFreeze).
-    const { data, error } = await supabase
-      .from("profiles")
-      .update({ card_frozen: false })
-      .eq("id", me.userId)
-      .select("card_frozen")
-      .single();
+    // card_set_frozen checks the card is the signed-in person's and returns it as it now is.
+    const { data, error } = await supabase.rpc("card_set_frozen", { p_card_id: cardId, p_frozen: false });
     setUnfreezing(false);
 
     if (error || !data) {
