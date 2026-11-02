@@ -6,7 +6,7 @@ import {
   NOTES_SENT,
   fieldGroups,
 } from "@/lib/context-fields";
-import { AGENT_HISTORY_WINDOW, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
+import { contextLayout } from "@/lib/context-layout";
 
 export const metadata = {
   title: "Privacy Policy — Y-tech",
@@ -14,6 +14,7 @@ export const metadata = {
 };
 
 export default function PrivacyPage() {
+  const layout = contextLayout();
   return (
     <div className="min-h-screen" style={{ background: "#FAFAFA" }}>
       <LegalHeader />
@@ -97,8 +98,8 @@ export default function PrivacyPage() {
           </p>
           <p>
             What you type to the assistant or a specialist is sent as you write it, together with
-            the most recent part of the conversation so far (the last {ASSISTANT_HISTORY_WINDOW}{" "}
-            messages with the assistant, the last {AGENT_HISTORY_WINDOW} with a specialist). Do
+            the most recent part of the conversation so far (the last {layout.conversationWindow.assistant}{" "}
+            messages with the assistant, the last {layout.conversationWindow.specialist} with a specialist). Do
             not type anything you would not want Anthropic to process.
           </p>
           <p>

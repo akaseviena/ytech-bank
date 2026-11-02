@@ -7,6 +7,12 @@
 // drift apart by one side being edited and the other forgotten: changing what an
 // agent receives is a change in this file, and in no other.
 //
+// CHANGING THIS FILE CHANGES WHAT THE APP'S CONSENT SCREEN MUST SAY. There are two consent
+// texts and one table: this page's /privacy renders from it automatically, the app's screen
+// is written by hand on the mobile side. Tell the founder whenever this file changes; the
+// app's pre-release check compares its copy with GET /api/mobile/ai/context-fields and fails
+// on any difference.
+//
 // Erasable TypeScript only, so `node --test` can run lib/context-fields.test.mjs
 // against this file directly.
 
