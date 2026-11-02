@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ledgerPence, type Pence } from "@/lib/money";
 import { isSubscription } from "@/lib/ledger-label";
+import { appWrittenNote } from "@/lib/transfer-note";
 import { CATEGORY_INFO, type LedgerItem, type LedgerLabel, type LedgerStatus, type TransactionCategory } from "@/types";
 
 // Reads of the double-entry ledger for the web app.
@@ -45,6 +46,8 @@ export interface MyAccount {
 }
 
 const TRANSFER_COLUMNS = "id,from_account,to_account,amount_minor,description,category,rail,status,created_at";
+// the same without the free-text note, for readers that only add numbers up
+const TRANSFER_COLUMNS_NO_NOTE = "id,from_account,to_account,amount_minor,category,rail,status,created_at";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The person's main account and its balance (account_balances is a view over the ledger). */
@@ -75,6 +78,8 @@ export interface TransferQuery {
   newestFirst?: boolean;
   /** completed transfers on rails that are real person-initiated movement */
   flowsOnly?: boolean;
+  /** do not read the free-text note at all; rows come back with description null */
+  omitNotes?: boolean;
 }
 
 /** Transfers touching `accountId`. Run with the person's own client. */
@@ -83,7 +88,7 @@ export async function fetchTransfers(db: SupabaseClient, accountId: string, opts
   const newestFirst = opts.newestFirst ?? true;
   const offset = opts.offset ?? 0;
 
-  let q = db.from("transfers").select(TRANSFER_COLUMNS);
+  let q = db.from("transfers").select(opts.omitNotes ? TRANSFER_COLUMNS_NO_NOTE : TRANSFER_COLUMNS);
   if (opts.direction === "sent") q = q.eq("from_account", accountId);
   else if (opts.direction === "received") q = q.eq("to_account", accountId);
   else q = q.or(`from_account.eq.${accountId},to_account.eq.${accountId}`);
@@ -96,7 +101,8 @@ export async function fetchTransfers(db: SupabaseClient, accountId: string, opts
     .order("id", { ascending: !newestFirst })
     .range(offset, offset + opts.limit - 1);
   if (error) throw new Error(`transfers read failed: ${error.message}`);
-  return (data ?? []) as TransferRow[];
+  const rows = (data ?? []) as unknown as (Omit<TransferRow, "description"> & { description?: string | null })[];
+  return rows.map((r) => ({ ...r, description: r.description ?? null }));
 }
 
 // ── counterparties ──────────────────────────────────────────────────────────
@@ -220,15 +226,24 @@ export function categoryLine(rows: TransferRow[], myAccountId: string, format: (
     .join(", ");
 }
 
-/** The ledger slices the two assistant routes need (flows only — see NON_FLOW_RAILS). */
+/**
+ * The ledger slices the two assistant routes need (flows only — see NON_FLOW_RAILS).
+ *
+ * Only the recent list is shown line by line, so only it carries notes, and those are
+ * cut down to the ones this app wrote (lib/transfer-note.ts): a note typed by a person
+ * can name someone who signed nothing. The two long windows are only added up, so
+ * their notes are never read.
+ */
 export async function loadAssistantLedger(db: SupabaseClient, userId: string, twelveMonthsAgo: string) {
   const account = await getMyAccount(db, userId);
   if (!account) return { account: null, recent: [] as TransferRow[], twelveMonths: [] as TransferRow[], allTime: [] as TransferRow[] };
   const id = account.accountId;
   const [recent, twelveMonths, allTime] = await Promise.all([
-    fetchTransfers(db, id, { limit: 30, flowsOnly: true }),
-    fetchTransfers(db, id, { limit: 1000, flowsOnly: true, since: twelveMonthsAgo }),
-    fetchTransfers(db, id, { limit: 1000, flowsOnly: true }),
+    fetchTransfers(db, id, { limit: 30, flowsOnly: true }).then((rows) =>
+      rows.map((r) => ({ ...r, description: appWrittenNote(r.description) })),
+    ),
+    fetchTransfers(db, id, { limit: 1000, flowsOnly: true, since: twelveMonthsAgo, omitNotes: true }),
+    fetchTransfers(db, id, { limit: 1000, flowsOnly: true, omitNotes: true }),
   ]);
   return { account, recent, twelveMonths, allTime };
 }
