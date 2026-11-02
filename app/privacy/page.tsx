@@ -1,4 +1,12 @@
 import { LegalHeader, LegalFooter, Section, Table } from "@/components/legal/LegalPage";
+import {
+  CONTEXT_AGENT_LABEL,
+  CONTEXT_FIELD_TEXT,
+  NEVER_SENT,
+  NOTES_SENT,
+  fieldGroups,
+} from "@/lib/context-fields";
+import { AGENT_HISTORY_WINDOW, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
 
 export const metadata = {
   title: "Privacy Policy — Y-tech",
@@ -12,7 +20,7 @@ export default function PrivacyPage() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 80px" }}>
         <p style={{ fontSize: 13, color: "#9B9B9B", marginBottom: 8 }}>
-          Last updated: 5 October 2026
+          Last updated: 2 November 2026
         </p>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1A1A1A", marginBottom: 8, lineHeight: 1.2 }}>
           Privacy Policy — Y-tech prototype
@@ -71,9 +79,27 @@ export default function PrivacyPage() {
           </p>
           <p>
             When you ask the assistant or a specialist a question, we send that question to
-            Anthropic, together with the relevant part of your Y-tech data: your demonstration
-            balances, recent transactions and subscriptions, your first name, and the names of
-            other Y-tech users involved in those transactions.
+            Anthropic, together with a small part of your Y-tech data. How much depends on who
+            you ask, and it is the same in the web app and in the mobile app:
+          </p>
+          {/* Rendered from lib/context-fields.ts, the table the code reads when it builds what is sent. */}
+          <ul style={{ paddingLeft: 20, margin: "8px 0 16px" }}>
+            {fieldGroups().map((group) => (
+              <li key={group.agents.join("-")} style={{ marginBottom: 8 }}>
+                <strong>{group.agents.map((a) => CONTEXT_AGENT_LABEL[a]).join(", ")}:</strong>{" "}
+                {group.fields.map((f) => CONTEXT_FIELD_TEXT[f]).join("; ")}.
+              </li>
+            ))}
+          </ul>
+          <p>
+            All amounts are demonstration funds. We never send {NEVER_SENT.slice(0, -1).join(", ")}, or{" "}
+            {NEVER_SENT[NEVER_SENT.length - 1]}. {NOTES_SENT}
+          </p>
+          <p>
+            What you type to the assistant or a specialist is sent as you write it, together with
+            the most recent part of the conversation so far (the last {ASSISTANT_HISTORY_WINDOW}{" "}
+            messages with the assistant, the last {AGENT_HISTORY_WINDOW} with a specialist). Do
+            not type anything you would not want Anthropic to process.
           </p>
           <p>
             Anthropic processes this to generate the answer and returns it to us. Under our
