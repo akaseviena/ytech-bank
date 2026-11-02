@@ -176,9 +176,7 @@ export async function buildAgentContext(
 
   const accountId = mainBal.accountId;
   const balance = toMajor(mainBal.balanceMinor);
-  const taxReserve = balance * 0.1;
-  const available = Math.max(0, balance - taxReserve);
-  const budgetLine = `Available budget: ${s}${available.toFixed(2)} (${currency})`;
+  const balanceLine = `Balance: ${s}${balance.toFixed(2)} (${currency})`;
 
   if (agentId === "accountant") {
     const monthStart = startOfMonth(new Date()).toISOString();
@@ -219,9 +217,7 @@ export async function buildAgentContext(
         .join("\n") || "  No data";
 
     return `[Accountant context]
-Balance: ${s}${balance.toFixed(2)} ${currency}
-Estimated tax reserve (10%): ${s}${taxReserve.toFixed(2)}
-${budgetLine}
+${balanceLine}
 
 Totals (last 50 transfers):
   Income: ${s}${totalIncome.toFixed(2)}
@@ -281,7 +277,7 @@ ${catLines}`;
     const runway = dailyBurn > 0 ? Math.round(balance / dailyBurn) : null;
 
     return `[Consultant context — aggregates only, no transaction line items]
-${budgetLine}
+${balanceLine}
 
 This month vs last month:
   Revenue: ${s}${c.revenue.toFixed(2)} (prev: ${s}${p.revenue.toFixed(2)})
@@ -313,11 +309,11 @@ Estimated runway: ${runway !== null ? runway + " days" : "n/a"}`;
       .reduce((a, t) => a + toMajor(t.amount_minor), 0);
 
     return `[Marketer context]
-${budgetLine}
+${balanceLine}
 Total spend this month: ${s}${totalSpend.toFixed(2)}
 Business/marketing spend this month: ${s}${bizSpend.toFixed(2)}`;
   }
 
-  // copywriter, designer, hr, client_manager, lawyer — budget only
-  return `[Agent context]\n${budgetLine}`;
+  // copywriter, designer, hr, client_manager, lawyer — balance only
+  return `[Agent context]\n${balanceLine}`;
 }
