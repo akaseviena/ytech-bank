@@ -34,7 +34,9 @@ const schema = z.object({
   conversationId: z.string().uuid().nullable(),
 });
 
-type StoredMessage = { role: "user" | "assistant"; content: string; timestamp: string };
+// `truncated` is set on an assistant reply that was cut short: the connection to the app dropped
+// or the model failed mid-reply, or it hit the length limit. Absent on a complete reply.
+type StoredMessage = { role: "user" | "assistant"; content: string; timestamp: string; truncated?: true };
 
 const STATUS_LABELS: Record<MobileAgentId, string[]> = {
   consultant:     ["Reading your financials…", "Analysing the situation…", "Building recommendations…"],
@@ -215,7 +217,12 @@ export async function POST(request: Request) {
         const assistantTimestamp = new Date().toISOString();
         const finalMessages: StoredMessage[] = [
           ...updatedMessages,
-          { role: "assistant", content: assistantText, timestamp: assistantTimestamp },
+          {
+            role: "assistant",
+            content: assistantText,
+            timestamp: assistantTimestamp,
+            ...(finalMsg.stop_reason === "max_tokens" ? { truncated: true as const } : {}),
+          },
         ];
         await admin.from("ai_conversations").update({
           messages: finalMessages,
@@ -233,7 +240,7 @@ export async function POST(request: Request) {
           const errorTimestamp = new Date().toISOString();
           const partialMessages: StoredMessage[] = [
             ...updatedMessages,
-            { role: "assistant", content: assistantText, timestamp: errorTimestamp },
+            { role: "assistant", content: assistantText, timestamp: errorTimestamp, truncated: true },
           ];
           try {
             await admin.from("ai_conversations").update({

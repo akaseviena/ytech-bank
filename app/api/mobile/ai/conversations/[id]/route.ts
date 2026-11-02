@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
 //   GET /api/mobile/ai/conversations/<id>?limit=30&before=45  -> the 30 before #45
 //
 // Messages come back oldest-first within a page, each with its position in the
-// conversation (`index`). `nextBefore` is the `before` for the next, older page,
+// conversation (`index`). An assistant reply that was cut short (connection lost, model
+// failure, length limit) also carries `"truncated": true`; complete replies have no such key. `nextBefore` is the `before` for the next, older page,
 // or null once the first message has been returned. Positions only grow as the
 // conversation grows, so a cursor stays valid while new messages arrive.
 
@@ -25,7 +26,7 @@ const querySchema = z.object({
   before: z.coerce.number().int().min(0).optional(),
 });
 
-type StoredMessage = { role: "user" | "assistant"; content: string; timestamp: string };
+type StoredMessage = { role: "user" | "assistant"; content: string; timestamp: string; truncated?: boolean };
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const user = await requireUser(request);
@@ -77,6 +78,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
       role: m.role,
       content: m.content,
       timestamp: m.timestamp,
+      // only present, and true, on a reply that was cut short
+      ...(m.truncated ? { truncated: true } : {}),
     })),
     nextBefore: start > 0 ? start : null,
   });

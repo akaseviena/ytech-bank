@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
   const twelveMonthsAgo = subMonths(now, 12).toISOString();
 
   const [profileRes, ledger, goalsRes] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("profiles").select("first_name,last_name,plan,created_at").eq("id", user.id).single(),
     // Money comes from the ledger, read as the signed-in person (row-level security).
     loadAssistantLedger(supabase, user.id, twelveMonthsAgo),
     supabase.from("savings_goals").select("*").eq("user_id", user.id),

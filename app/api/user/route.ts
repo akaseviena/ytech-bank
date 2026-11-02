@@ -8,7 +8,9 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    // named columns: the profile row also holds balance and card_frozen, which belonged to the
+    // old money rail and no longer move — money is read from the ledger, the card from card_get()
+    .select("id,first_name,last_name,avatar_url,plan,account_number,currency,card_color,created_at")
     .eq("id", user.id)
     .single();
 
