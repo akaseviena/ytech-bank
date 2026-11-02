@@ -2,6 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ledgerPence, type Pence } from "@/lib/money";
 import { isSubscription } from "@/lib/ledger-label";
 import { appWrittenNote } from "@/lib/transfer-note";
+import { RECENT_TRANSFERS_SHOWN, TRANSFERS_FOR_TOTALS, type ContextField } from "@/lib/context-fields";
+import { RUNWAY_WINDOW_DAYS } from "@/lib/runway";
+import { startOfMonth, subMonths } from "date-fns";
 import { CATEGORY_INFO, type LedgerItem, type LedgerLabel, type LedgerStatus, type TransactionCategory } from "@/types";
 
 // Reads of the double-entry ledger for the web app.
@@ -51,7 +54,7 @@ const TRANSFER_COLUMNS_NO_NOTE = "id,from_account,to_account,amount_minor,catego
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The person's main account and its balance (account_balances is a view over the ledger). */
-export async function getMyAccount(db: SupabaseClient, userId: string): Promise<MyAccount | null> {
+export async function getMyAccount(db: SupabaseClient, userId: string, opts: { withRef?: boolean } = {}): Promise<MyAccount | null> {
   const { data, error } = await db
     .from("account_balances")
     .select("account_id,balance_minor,currency")
@@ -60,12 +63,12 @@ export async function getMyAccount(db: SupabaseClient, userId: string): Promise<
     .maybeSingle();
   if (error) throw new Error(`account_balances read failed: ${error.message}`);
   if (!data) return null;
-  const acct = await db.from("accounts").select("iban_display").eq("id", data.account_id).maybeSingle();
+  const acct = opts.withRef === false ? null : await db.from("accounts").select("iban_display").eq("id", data.account_id).maybeSingle();
   return {
     accountId: data.account_id,
     balanceMinor: ledgerPence(data.balance_minor),
     currency: data.currency,
-    ibanDisplay: acct.data?.iban_display ?? null,
+    ibanDisplay: acct?.data?.iban_display ?? null,
   };
 }
 
@@ -226,24 +229,88 @@ export function categoryLine(rows: TransferRow[], myAccountId: string, format: (
     .join(", ");
 }
 
+/** The ledger rows a model context is built from; each part is empty unless a field asked for it. */
+export interface ContextRows {
+  account: MyAccount | null;
+  /** completed person-initiated transfers since the start of this month */
+  month: TransferRow[];
+  /** the same for the month before (only when the context compares months) */
+  previousMonth: TransferRow[];
+  /** the newest TRANSFERS_FOR_TOTALS, to be added up */
+  lastTransfers: TransferRow[];
+  /** the newest RECENT_TRANSFERS_SHOWN, listed one by one */
+  recent: TransferRow[];
+  /** what the runway estimate is made from; null when the field is not asked for */
+  runway: { expensePence: Pence; expenseCount: number; historyDays: number } | null;
+}
+
 /**
- * The ledger slices the two assistant routes need (flows only — see NON_FLOW_RAILS).
+ * Reads exactly what `fields` (lib/context-fields.ts) need and nothing more: an agent that
+ * is given only the balance never reads a single transfer. The one place the web routes and
+ * the app both read the ledger for a model, so the windows are the same on both.
  *
- * Only the recent list is shown line by line, so only it carries notes, and those are
- * cut down to the ones this app wrote (lib/transfer-note.ts): a note typed by a person
- * can name someone who signed nothing. The two long windows are only added up, so
- * their notes are never read.
+ * Notes: only `recent` is read with them, and cut down to the ones this app wrote
+ * (lib/transfer-note.ts) — a note typed by a person can name someone who signed nothing.
+ * Every other part is only added up, so the note column is not even selected.
  */
-export async function loadAssistantLedger(db: SupabaseClient, userId: string, twelveMonthsAgo: string) {
-  const account = await getMyAccount(db, userId);
-  if (!account) return { account: null, recent: [] as TransferRow[], twelveMonths: [] as TransferRow[], allTime: [] as TransferRow[] };
+export async function loadContextRows(
+  db: SupabaseClient,
+  userId: string,
+  fields: ReadonlySet<ContextField>,
+  now: Date = new Date(),
+): Promise<ContextRows> {
+  const none: ContextRows = { account: null, month: [], previousMonth: [], lastTransfers: [], recent: [], runway: null };
+  const account = await getMyAccount(db, userId, { withRef: false });
+  if (!account) return none;
   const id = account.accountId;
-  const [recent, twelveMonths, allTime] = await Promise.all([
-    fetchTransfers(db, id, { limit: 30, flowsOnly: true }).then((rows) =>
-      rows.map((r) => ({ ...r, description: appWrittenNote(r.description) })),
-    ),
-    fetchTransfers(db, id, { limit: 1000, flowsOnly: true, since: twelveMonthsAgo, omitNotes: true }),
-    fetchTransfers(db, id, { limit: 1000, flowsOnly: true, omitNotes: true }),
+
+  const needsMonth = (["month_spent", "month_received", "month_business_spent", "month_categories", "month_vs_previous"] as const).some((f) =>
+    fields.has(f),
+  );
+  const monthStart = startOfMonth(now);
+  const since = fields.has("month_vs_previous") ? startOfMonth(subMonths(now, 1)) : monthStart;
+  const windowStart = new Date(now.getTime() - RUNWAY_WINDOW_DAYS * 86_400_000);
+
+  const [monthAndBefore, lastTransfers, recent, windowSent, first] = await Promise.all([
+    needsMonth ? fetchTransfers(db, id, { limit: 1000, flowsOnly: true, since: since.toISOString(), omitNotes: true }) : [],
+    fields.has("last_transfers_totals") ? fetchTransfers(db, id, { limit: TRANSFERS_FOR_TOTALS, flowsOnly: true, omitNotes: true }) : [],
+    fields.has("recent_transfers")
+      ? fetchTransfers(db, id, { limit: RECENT_TRANSFERS_SHOWN, flowsOnly: true }).then((rows) =>
+          rows.map((r) => ({ ...r, description: appWrittenNote(r.description) })),
+        )
+      : [],
+    fields.has("runway")
+      ? fetchTransfers(db, id, { limit: 1000, flowsOnly: true, direction: "sent", since: windowStart.toISOString(), omitNotes: true })
+      : [],
+    // the account's first posting of any kind: how much history there is
+    fields.has("runway")
+      ? db
+          .from("transfers")
+          .select("created_at")
+          .or(`from_account.eq.${id},to_account.eq.${id}`)
+          .eq("status", "completed")
+          .order("created_at", { ascending: true })
+          .limit(1)
+      : null,
   ]);
-  return { account, recent, twelveMonths, allTime };
+
+  const isThisMonth = (r: TransferRow) => Date.parse(r.created_at) >= monthStart.getTime();
+  let runway: ContextRows["runway"] = null;
+  if (fields.has("runway")) {
+    const firstAt = first?.data?.[0]?.created_at as string | undefined;
+    runway = {
+      expensePence: windowSent.reduce((sum, r) => sum + ledgerPence(r.amount_minor), 0),
+      expenseCount: windowSent.length,
+      historyDays: firstAt ? Math.floor((now.getTime() - Date.parse(firstAt)) / 86_400_000) : 0,
+    };
+  }
+
+  return {
+    account,
+    month: monthAndBefore.filter(isThisMonth),
+    previousMonth: monthAndBefore.filter((r) => !isThisMonth(r)),
+    lastTransfers,
+    recent,
+    runway,
+  };
 }
