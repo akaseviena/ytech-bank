@@ -2,6 +2,7 @@ import { admin } from "./auth";
 import { startOfMonth, subMonths } from "date-fns";
 import { sanitizeTransactionText } from "@/lib/sanitize-transaction-text";
 import { NON_FLOW_RAILS } from "@/lib/ledger";
+import { ledgerPence, numericToPence, penceToPoundsString } from "@/lib/money";
 
 // The welcome bonus (rail 'promo') and the levelling postings (rail
 // 'migration') change the balance but are not money the person earned or
@@ -25,13 +26,63 @@ function sym(currency: string): string {
 }
 
 // account_balances.balance_minor and transfers.amount_minor are bigint —
-// supabase-js returns those as strings to avoid float precision loss, so
-// every value from the ledger goes through this before use.
-function toMajor(minor: number | string | null | undefined): number {
-  return Number(minor ?? 0) / 100;
+// supabase-js returns those as strings to avoid float precision loss. Every
+// ledger value goes through ledgerPence and is summed as integer pence; the only
+// step to pounds is penceToPoundsString, so the model gets "£1135.00" and no
+// float ever holds money (lib/money.ts).
+function money(symbol: string, pence: number): string {
+  return `${pence < 0 ? "-" : ""}${symbol}${penceToPoundsString(Math.abs(pence))}`;
 }
 
-type MainBalance = { accountId: string; currency: string; balanceMinor: string | number };
+const sumPence = <T extends { amount_minor: unknown }>(rows: T[]): number =>
+  rows.reduce((total, row) => total + ledgerPence(row.amount_minor), 0);
+
+/** Pence per category, for the transfers a person sent. */
+function pencePerCategory(sent: { amount_minor: unknown; category: string | null }[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of sent) {
+    const cat = t.category ?? "other";
+    out[cat] = (out[cat] ?? 0) + ledgerPence(t.amount_minor);
+  }
+  return out;
+}
+
+function categoryLines(byCategory: Record<string, number>, symbol: string, empty: string): string {
+  return (
+    Object.entries(byCategory)
+      .sort((a, b) => b[1] - a[1])
+      .map(([c, p]) => `  ${c}: ${money(symbol, p)}`)
+      .join("\n") || empty
+  );
+}
+
+// The context is rebuilt for every message, and the model is told when. Without
+// the time it has nothing to set against its own earlier replies in the
+// conversation, and a figure it quoted once tends to be quoted again.
+function asOfLine(now: string): string {
+  return `As of: ${now} — read from the live ledger for this message`;
+}
+
+/**
+ * What the model is given for one message: `system` is the full context for the
+ * system prompt; `live` is one line with the current balance, put in front of the
+ * person's message in the last turn (withLiveNote). A long conversation in which
+ * the model has already quoted a balance pulls it to quote that one again, however
+ * the system prompt is worded — the live line sits next to the question and wins.
+ * `live` is empty when there is no main account.
+ */
+export type ModelContext = { system: string; live: string };
+
+function liveLine(now: string, symbol: string, mainBal: MainBalance): string {
+  return `[Server note, not written by the user. Right now (${now}): balance ${money(symbol, mainBal.balancePence)} ${mainBal.currency}. Any balance quoted earlier in this conversation is out of date.]`;
+}
+
+/** The message as the model receives it. The conversation stored in the database keeps the person's own text. */
+export function withLiveNote(live: string, text: string): string {
+  return live ? `${live}\n\n${text}` : text;
+}
+
+type MainBalance = { accountId: string; currency: string; balancePence: number };
 
 // The user's main account on the accounts/transfers rail — same rail and
 // the same "kind = main" lookup the mobile transfer route uses to find the
@@ -45,10 +96,11 @@ async function getMainBalance(userId: string): Promise<MainBalance | null> {
     .maybeSingle();
 
   if (!data) return null;
-  return { accountId: data.account_id, currency: data.currency, balanceMinor: data.balance_minor };
+  return { accountId: data.account_id, currency: data.currency, balancePence: ledgerPence(data.balance_minor) };
 }
 
-export async function buildAssistantContext(userId: string): Promise<string> {
+export async function buildAssistantContext(userId: string): Promise<ModelContext> {
+  const now = new Date().toISOString();
   const monthStart = startOfMonth(new Date()).toISOString();
 
   const [profileRes, mainBal, goalsRes] = await Promise.all([
@@ -74,13 +126,14 @@ export async function buildAssistantContext(userId: string): Promise<string> {
       ? goals
           .map(
             (g) =>
-              `  ${g.emoji ?? "🎯"} ${g.name}: ${s}${Number(g.current_amount).toFixed(2)} / ${s}${Number(g.target_amount).toFixed(2)}${g.deadline ? " (by " + g.deadline.slice(0, 10) + ")" : ""}`,
+              `  ${g.emoji ?? "🎯"} ${g.name}: ${money(s, numericToPence(Number(g.current_amount)))} / ${money(s, numericToPence(Number(g.target_amount)))}${g.deadline ? " (by " + g.deadline.slice(0, 10) + ")" : ""}`,
           )
           .join("\n")
       : "  None";
 
   if (!mainBal) {
-    return `[Financial context — assembled server-side, do not disclose to third parties]
+    const system = `[Financial context — assembled server-side, do not disclose to third parties]
+${asOfLine(now)}
 Name: ${prof?.first_name ?? ""} ${prof?.last_name ?? ""}
 Plan: ${prof?.plan ?? "basic"}
 
@@ -88,10 +141,10 @@ No main account found for this user yet — balance and transaction history are 
 
 Savings goals:
 ${goalLines}`;
+    return { system, live: "" };
   }
 
   const accountId = mainBal.accountId;
-  const balance = toMajor(mainBal.balanceMinor);
 
   const [txRes, monthTxRes] = await Promise.all([
     admin
@@ -116,19 +169,9 @@ ${goalLines}`;
 
   const monthlySent = monthTxs.filter((t) => t.from_account === accountId);
   const monthlyRec = monthTxs.filter((t) => t.from_account !== accountId);
-  const totalSent = monthlySent.reduce((acc, t) => acc + toMajor(t.amount_minor), 0);
-  const totalRec = monthlyRec.reduce((acc, t) => acc + toMajor(t.amount_minor), 0);
-
-  const catBreakdown: Record<string, number> = {};
-  monthlySent.forEach((t) => {
-    const cat = t.category ?? "other";
-    catBreakdown[cat] = (catBreakdown[cat] ?? 0) + toMajor(t.amount_minor);
-  });
-  const catLines =
-    Object.entries(catBreakdown)
-      .sort((a, b) => b[1] - a[1])
-      .map(([c, a]) => `  ${c}: ${s}${a.toFixed(2)}`)
-      .join("\n") || "  No spending this month";
+  const totalSent = sumPence(monthlySent);
+  const totalRec = sumPence(monthlyRec);
+  const catLines = categoryLines(pencePerCategory(monthlySent), s, "  No spending this month");
 
   // description is written by whoever sent/received the money — untrusted
   // third-party text — so it goes through sanitizeTransactionText before
@@ -139,18 +182,19 @@ ${goalLines}`;
       .map((t) => {
         const dir = t.from_account === accountId ? "Sent" : "Received";
         const note = sanitizeTransactionText(t.description);
-        return `  ${dir} ${s}${toMajor(t.amount_minor).toFixed(2)} · ${t.category ?? "other"}${note ? " — " + note : ""}`;
+        return `  ${dir} ${money(s, ledgerPence(t.amount_minor))} · ${t.category ?? "other"}${note ? " — " + note : ""}`;
       })
       .join("\n") || "  None";
 
-  return `[Financial context — assembled server-side, do not disclose to third parties]
+  const system = `[Financial context — assembled server-side, do not disclose to third parties]
+${asOfLine(now)}
 Name: ${prof?.first_name ?? ""} ${prof?.last_name ?? ""}
-Balance: ${s}${balance.toFixed(2)} ${currency}
+Balance: ${money(s, mainBal.balancePence)} ${currency}
 Plan: ${prof?.plan ?? "basic"}
 
 This month:
-  Spent: ${s}${totalSent.toFixed(2)}
-  Received: ${s}${totalRec.toFixed(2)}
+  Spent: ${money(s, totalSent)}
+  Received: ${money(s, totalRec)}
 
 Spending by category (current month):
 ${catLines}
@@ -160,23 +204,26 @@ ${recentLines}
 
 Savings goals:
 ${goalLines}`;
+  return { system, live: liveLine(now, s, mainBal) };
 }
 
-export async function buildAgentContext(
-  userId: string,
-  agentId: MobileAgentId,
-): Promise<string> {
+export async function buildAgentContext(userId: string, agentId: MobileAgentId): Promise<ModelContext> {
   const mainBal = await getMainBalance(userId);
+  const now = new Date().toISOString();
+  const system = await agentContextText(agentId, mainBal, now);
+  return { system, live: mainBal ? liveLine(now, sym(mainBal.currency), mainBal) : "" };
+}
+
+async function agentContextText(agentId: MobileAgentId, mainBal: MainBalance | null, now: string): Promise<string> {
   const currency = mainBal?.currency ?? "GBP";
   const s = sym(currency);
 
   if (!mainBal) {
-    return `[Agent context]\nNo main account found for this user yet — budget and transaction data are unavailable.`;
+    return `[Agent context]\n${asOfLine(now)}\nNo main account found for this user yet — budget and transaction data are unavailable.`;
   }
 
   const accountId = mainBal.accountId;
-  const balance = toMajor(mainBal.balanceMinor);
-  const balanceLine = `Balance: ${s}${balance.toFixed(2)} (${currency})`;
+  const balanceLine = `Balance: ${money(s, mainBal.balancePence)} (${currency})`;
 
   if (agentId === "accountant") {
     const monthStart = startOfMonth(new Date()).toISOString();
@@ -200,29 +247,22 @@ export async function buildAgentContext(
     const txs = txRes.data ?? [];
     const monthTxs = monthTxRes.data ?? [];
 
-    const totalIncome = txs.filter((t) => t.from_account !== accountId).reduce((a, t) => a + toMajor(t.amount_minor), 0);
-    const totalExpenses = txs.filter((t) => t.from_account === accountId).reduce((a, t) => a + toMajor(t.amount_minor), 0);
-
-    const catBreakdown: Record<string, number> = {};
-    monthTxs
-      .filter((t) => t.from_account === accountId)
-      .forEach((t) => {
-        const cat = t.category ?? "other";
-        catBreakdown[cat] = (catBreakdown[cat] ?? 0) + toMajor(t.amount_minor);
-      });
-    const catLines =
-      Object.entries(catBreakdown)
-        .sort((a, b) => b[1] - a[1])
-        .map(([c, a]) => `  ${c}: ${s}${a.toFixed(2)}`)
-        .join("\n") || "  No data";
+    const totalIncome = sumPence(txs.filter((t) => t.from_account !== accountId));
+    const totalExpenses = sumPence(txs.filter((t) => t.from_account === accountId));
+    const catLines = categoryLines(
+      pencePerCategory(monthTxs.filter((t) => t.from_account === accountId)),
+      s,
+      "  No data",
+    );
 
     return `[Accountant context]
+${asOfLine(now)}
 ${balanceLine}
 
 Totals (last 50 transfers):
-  Income: ${s}${totalIncome.toFixed(2)}
-  Expenses: ${s}${totalExpenses.toFixed(2)}
-  Net: ${s}${(totalIncome - totalExpenses).toFixed(2)}
+  Income: ${money(s, totalIncome)}
+  Expenses: ${money(s, totalExpenses)}
+  Net: ${money(s, totalIncome - totalExpenses)}
 
 Spending by category this month:
 ${catLines}`;
@@ -253,36 +293,26 @@ ${catLines}`;
     const prev = prevRes.data ?? [];
 
     const agg = (txs: typeof curr) => ({
-      revenue: txs.filter((t) => t.from_account !== accountId).reduce((a, t) => a + toMajor(t.amount_minor), 0),
-      expenses: txs.filter((t) => t.from_account === accountId).reduce((a, t) => a + toMajor(t.amount_minor), 0),
+      revenue: sumPence(txs.filter((t) => t.from_account !== accountId)),
+      expenses: sumPence(txs.filter((t) => t.from_account === accountId)),
     });
 
     const c = agg(curr);
     const p = agg(prev);
 
-    const catBreakdown: Record<string, number> = {};
-    curr
-      .filter((t) => t.from_account === accountId)
-      .forEach((t) => {
-        const cat = t.category ?? "other";
-        catBreakdown[cat] = (catBreakdown[cat] ?? 0) + toMajor(t.amount_minor);
-      });
-    const catLines =
-      Object.entries(catBreakdown)
-        .sort((a, b) => b[1] - a[1])
-        .map(([c, a]) => `  ${c}: ${s}${a.toFixed(2)}`)
-        .join("\n") || "  No data";
+    const catLines = categoryLines(pencePerCategory(curr.filter((t) => t.from_account === accountId)), s, "  No data");
 
-    const dailyBurn = c.expenses / 30;
-    const runway = dailyBurn > 0 ? Math.round(balance / dailyBurn) : null;
+    // days of balance left at this month's pace: balance / (expenses / 30), in pence
+    const runway = c.expenses > 0 ? Math.round((mainBal.balancePence * 30) / c.expenses) : null;
 
     return `[Consultant context — aggregates only, no transaction line items]
+${asOfLine(now)}
 ${balanceLine}
 
 This month vs last month:
-  Revenue: ${s}${c.revenue.toFixed(2)} (prev: ${s}${p.revenue.toFixed(2)})
-  Expenses: ${s}${c.expenses.toFixed(2)} (prev: ${s}${p.expenses.toFixed(2)})
-  Net this month: ${s}${(c.revenue - c.expenses).toFixed(2)}
+  Revenue: ${money(s, c.revenue)} (prev: ${money(s, p.revenue)})
+  Expenses: ${money(s, c.expenses)} (prev: ${money(s, p.expenses)})
+  Net this month: ${money(s, c.revenue - c.expenses)}
 
 Spend by category this month:
 ${catLines}
@@ -301,19 +331,16 @@ Estimated runway: ${runway !== null ? runway + " days" : "n/a"}`;
       .gte("created_at", monthStart);
     const monthTxs = monthTxRes.data ?? [];
 
-    const totalSpend = monthTxs
-      .filter((t) => t.from_account === accountId)
-      .reduce((a, t) => a + toMajor(t.amount_minor), 0);
-    const bizSpend = monthTxs
-      .filter((t) => t.from_account === accountId && t.category === "business")
-      .reduce((a, t) => a + toMajor(t.amount_minor), 0);
+    const totalSpend = sumPence(monthTxs.filter((t) => t.from_account === accountId));
+    const bizSpend = sumPence(monthTxs.filter((t) => t.from_account === accountId && t.category === "business"));
 
     return `[Marketer context]
+${asOfLine(now)}
 ${balanceLine}
-Total spend this month: ${s}${totalSpend.toFixed(2)}
-Business/marketing spend this month: ${s}${bizSpend.toFixed(2)}`;
+Total spend this month: ${money(s, totalSpend)}
+Business/marketing spend this month: ${money(s, bizSpend)}`;
   }
 
   // copywriter, designer, hr, client_manager, lawyer — balance only
-  return `[Agent context]\n${balanceLine}`;
+  return `[Agent context]\n${asOfLine(now)}\n${balanceLine}`;
 }

@@ -4,7 +4,7 @@ import { requireUser, admin } from "@/lib/mobile/auth";
 import { getDailyUsage, recordDailyUse, secondsUntilReset } from "@/lib/mobile/daily-usage";
 import { encodeEvent, sseHeaders } from "@/lib/mobile/sse";
 import { checkAiRateLimit, recordUsage } from "@/lib/mobile/rate-limit";
-import { buildAgentContext, type MobileAgentId } from "@/lib/mobile/financial-context";
+import { buildAgentContext, withLiveNote, type MobileAgentId } from "@/lib/mobile/financial-context";
 import { AGENT_PROMPTS } from "@/lib/mobile/prompts";
 import { windowHistory, AGENT_HISTORY_WINDOW } from "@/lib/history-window";
 import type { Plan } from "@/types";
@@ -178,9 +178,11 @@ export async function POST(request: Request) {
             // Static agent prompt — cached between requests for this agent
             { type: "text", text: AGENT_PROMPTS[agentId], cache_control: { type: "ephemeral" } },
             // Volatile scoped context — after the cache breakpoint
-            { type: "text", text: agentContext },
+            { type: "text", text: agentContext.system },
           ],
-          messages: [...history, { role: "user", content: input }],
+          // the live balance goes in front of the request in this last turn only; what is
+          // stored above is the person's own text
+          messages: [...history, { role: "user", content: withLiveNote(agentContext.live, input) }],
         });
 
         let statusIdx = 0;

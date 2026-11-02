@@ -4,7 +4,7 @@ import { requireUser, admin } from "@/lib/mobile/auth";
 import { getDailyUsage, recordDailyUse, secondsUntilReset } from "@/lib/mobile/daily-usage";
 import { encodeEvent, sseHeaders } from "@/lib/mobile/sse";
 import { checkAiRateLimit, recordUsage } from "@/lib/mobile/rate-limit";
-import { buildAssistantContext } from "@/lib/mobile/financial-context";
+import { buildAssistantContext, withLiveNote } from "@/lib/mobile/financial-context";
 import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/mobile/prompts";
 import { windowHistory, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
 
@@ -122,9 +122,11 @@ export async function POST(request: Request) {
           output_config: { effort: "medium" },
           system: [
             { type: "text", text: ASSISTANT_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-            { type: "text", text: financialContext },
+            { type: "text", text: financialContext.system },
           ],
-          messages: [...history, { role: "user", content: message }],
+          // the live balance goes in front of the question in this last turn only; what is
+          // stored above is the person's own text
+          messages: [...history, { role: "user", content: withLiveNote(financialContext.live, message) }],
         });
 
         for await (const event of messageStream) {
