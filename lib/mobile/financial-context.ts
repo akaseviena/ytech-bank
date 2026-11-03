@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { admin } from "./auth";
 import { sanitizeTransactionText } from "@/lib/sanitize-transaction-text";
 import { loadContextRows, spendByCategory, totals } from "@/lib/ledger";
@@ -56,24 +57,25 @@ export function withLiveNote(live: string, text: string): string {
   return live ? `${live}\n\n${text}` : text;
 }
 
-export async function buildAssistantContext(userId: string): Promise<ModelContext> {
-  return compose(userId, "assistant");
+// `db` is the service-role client; a test passes a stand-in for it (lib/canary.test.mjs).
+export async function buildAssistantContext(userId: string, db: SupabaseClient = admin): Promise<ModelContext> {
+  return compose(userId, "assistant", db);
 }
 
-export async function buildAgentContext(userId: string, agentId: MobileAgentId): Promise<ModelContext> {
-  return compose(userId, agentId);
+export async function buildAgentContext(userId: string, agentId: MobileAgentId, db: SupabaseClient = admin): Promise<ModelContext> {
+  return compose(userId, agentId, db);
 }
 
-async function compose(userId: string, agent: ContextAgent): Promise<ModelContext> {
+async function compose(userId: string, agent: ContextAgent, db: SupabaseClient): Promise<ModelContext> {
   const fields = fieldSet(agent);
   const nowDate = new Date();
   const now = nowDate.toISOString();
 
   const [rows, profile, goalsRes] = await Promise.all([
-    loadContextRows(admin, userId, fields, nowDate),
-    fields.has("plan") ? admin.from("profiles").select("plan").eq("id", userId).single() : null,
+    loadContextRows(db, userId, fields, nowDate),
+    fields.has("plan") ? db.from("profiles").select("plan").eq("id", userId).single() : null,
     fields.has("goals")
-      ? admin.from("savings_goals").select("name, target_amount, current_amount, emoji, deadline").eq("user_id", userId)
+      ? db.from("savings_goals").select("name, target_amount, current_amount, emoji, deadline").eq("user_id", userId)
       : null,
   ]);
 
