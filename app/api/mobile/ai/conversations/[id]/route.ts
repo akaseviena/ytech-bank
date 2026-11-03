@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireUser, admin } from "@/lib/mobile/auth";
+import { continuationsLeft } from "@/lib/mobile/reply-stream";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,9 @@ export const dynamic = "force-dynamic";
 //
 // Messages come back oldest-first within a page, each with its position in the
 // conversation (`index`). An assistant reply that was cut short (connection lost, model
-// failure, length limit) also carries `"truncated": true`; complete replies have no such key. `nextBefore` is the `before` for the next, older page,
+// failure, length limit, time limit) also carries `"truncated": true` and `"continuationsLeft"`
+// (0, 1 or 2: how many more times it can be continued, see the `continueFrom` field of the chat
+// and NeuroOffice requests); complete replies have neither key. `nextBefore` is the `before` for the next, older page,
 // or null once the first message has been returned. Positions only grow as the
 // conversation grows, so a cursor stays valid while new messages arrive.
 
@@ -26,7 +29,7 @@ const querySchema = z.object({
   before: z.coerce.number().int().min(0).optional(),
 });
 
-type StoredMessage = { role: "user" | "assistant"; content: string; timestamp: string; truncated?: boolean };
+type StoredMessage = { role: "user" | "assistant"; content: string; timestamp: string; truncated?: boolean; continuations?: number };
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const user = await requireUser(request);
@@ -78,8 +81,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
       role: m.role,
       content: m.content,
       timestamp: m.timestamp,
-      // only present, and true, on a reply that was cut short
-      ...(m.truncated ? { truncated: true } : {}),
+      // only present on a reply that was cut short
+      ...(m.truncated ? { truncated: true, continuationsLeft: continuationsLeft(m) } : {}),
     })),
     nextBefore: start > 0 ? start : null,
   });
