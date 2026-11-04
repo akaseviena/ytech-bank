@@ -8,6 +8,15 @@ export const admin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: noStoreFetch } },
 );
 
+/** A client that acts as the person whose bearer token the request carries (row-level security and auth.uid() apply). */
+export function clientFor(req: Request) {
+  const header = req.headers.get("authorization") ?? "";
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: header }, fetch: noStoreFetch },
+  });
+}
+
 export async function requireUser(req: Request): Promise<User | null> {
   const header = req.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;

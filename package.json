@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --test lib/*.test.mjs"
+    "test": "node --test lib/*.test.mjs",
+    "check:plans": "node scripts/check-plans.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",

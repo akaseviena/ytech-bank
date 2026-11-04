@@ -17,7 +17,10 @@
 //                        sends, always with the prefix. Nothing on a payment received. It never
 //                        writes "From <name>" and never a bare name.
 //   POST /api/mobile/transfer   passes the client's text through unchanged (up to 140 characters).
-//   POST /api/subscription      the six texts in APP_WRITTEN_NOTES below.
+//   change_plan (the database function behind POST /api/subscription and /api/mobile/subscription)
+//                        writes plans.charge_description: today the four Subscription texts of the plans
+//                        that are sold. Business's text and the refund text are no longer written, and stay
+//                        in the list below because old rows carry them.
 //   SQL (outside this repo)   claim_demo_topup (migration 023) writes "Demo top-up";
 //                        grant_welcome_bonus (migration 001) writes "Welcome demo balance", on the promo
 //                        rail, which, like the migration rail, is left out of every context; balance
@@ -34,7 +37,8 @@
 // The texts the app itself writes on a transfer: the plan charges (plan names as in lib/plans.ts,
 // basic is free) and the two demo-money notes the database writes. Each is exact: one character off
 // and a typed note would pass for ours. The two demo-money strings were supplied by the side that
-// writes them and are not to be renamed (they are already on existing rows).
+// writes them and are not to be renamed (they are already on existing rows). The plan charge texts
+// must be what the plans table holds in charge_description (`npm run check:plans` compares them).
 const APP_WRITTEN_NOTES: ReadonlySet<string> = new Set([
   "Subscription - Standard plan",
   "Subscription - Travel plan",

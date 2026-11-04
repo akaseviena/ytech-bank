@@ -10,7 +10,7 @@ import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
 import { useToast } from "@/components/ui/Toast";
 import { formatPence, ledgerPence } from "@/lib/money";
-import { PLAN_PRICE_PENCE } from "@/lib/plans";
+import { chargeFor, PLAN_PURCHASABLE } from "@/lib/plans";
 import { PLAN_INFO, type Plan, type Profile } from "@/types";
 
 type SettingsProfile = Pick<Profile, "id" | "plan" | "first_name" | "last_name">;
@@ -118,7 +118,7 @@ export default function SettingsPage() {
   }, []);
 
   function handleSelectPlan(plan: Plan) {
-    if (!profile || plan === profile.plan) return;
+    if (!profile || plan === profile.plan || !PLAN_PURCHASABLE[plan]) return;
     requestId.current = crypto.randomUUID();
     setPendingPlan(plan);
   }
@@ -127,7 +127,6 @@ export default function SettingsPage() {
     if (!profile || !pendingPlan) return;
     setConfirmingPlan(true);
 
-    const price = PLAN_PRICE_PENCE[pendingPlan];
     const planName = PLAN_INFO[pendingPlan].name;
 
     const res = await fetch("/api/subscription", {
@@ -148,7 +147,8 @@ export default function SettingsPage() {
     }
 
     if (typeof result.balanceMinor === "number") setBalanceMinor(result.balanceMinor);
-    else if (balanceMinor !== null) setBalanceMinor(balanceMinor - price);
+    // what the server says it charged, not a sum of ours: a downgrade is free
+    else if (balanceMinor !== null && typeof result.chargedMinor === "number") setBalanceMinor(balanceMinor - result.chargedMinor);
     setProfile((prev) => prev ? { ...prev, plan: pendingPlan } : prev);
     setPendingPlan(null);
     setConfirmingPlan(false);
@@ -164,7 +164,9 @@ export default function SettingsPage() {
   }
 
   const pendingPlanInfo = pendingPlan ? PLAN_INFO[pendingPlan] : null;
-  const pendingPrice = pendingPlan ? PLAN_PRICE_PENCE[pendingPlan] : 0;
+  // What the confirmation promises: only a switch to a higher price is charged (chargeFor, the
+  // rule change_plan applies); the amount shown afterwards is the server's.
+  const pendingCharge = pendingPlan && profile ? chargeFor(profile.plan, pendingPlan) : 0;
 
   return (
     <PageTransition>
@@ -191,16 +193,19 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {plans.map((plan) => {
                 const isCurrent = profile?.plan === plan.id;
+                const purchasable = PLAN_PURCHASABLE[plan.id];
                 return (
                   <motion.button
                     key={plan.id}
                     whileTap={isCurrent ? {} : { scale: 0.98 }}
                     onClick={() => handleSelectPlan(plan.id)}
-                    disabled={isCurrent}
+                    disabled={isCurrent || !purchasable}
                     className={`relative text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
                       isCurrent
                         ? "border-[#F5C800] bg-[rgba(245,200,0,0.06)] shadow-[0_0_0_3px_rgba(245,200,0,0.12)] cursor-default"
-                        : "border-[#F0F0F0] bg-white hover:border-[rgba(245,200,0,0.4)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.08)] cursor-pointer"
+                        : !purchasable
+                          ? "border-[#F0F0F0] bg-white opacity-60 cursor-not-allowed"
+                          : "border-[#F0F0F0] bg-white hover:border-[rgba(245,200,0,0.4)] hover:shadow-[0_0_0_3px_rgba(245,200,0,0.08)] cursor-pointer"
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-2">
@@ -225,6 +230,9 @@ export default function SettingsPage() {
                         <div className={`text-xs font-semibold mt-0.5 ${isCurrent ? "text-[#F5C800]" : "text-[#6B6B6B]"}`}>
                           {plan.price}
                         </div>
+                        {!purchasable && !isCurrent && (
+                          <div className="text-xs text-[#9B9B9B] mt-0.5">Not available online</div>
+                        )}
                       </div>
                     </div>
                     <ul className="space-y-1">
@@ -333,17 +341,19 @@ export default function SettingsPage() {
                   You are switching to{" "}
                   <span className="text-[#F5C800]">{pendingPlanInfo.name}</span> plan
                 </p>
-                {pendingPrice > 0 ? (
+                {pendingCharge > 0 ? (
                   <p className="text-sm text-[#6B6B6B]">
-                    <span className="font-bold text-[#F5C800]">{formatPence(pendingPrice)}</span>{" "}
+                    <span className="font-bold text-[#F5C800]">{formatPence(pendingCharge)}</span>{" "}
                     will be deducted from your balance
                   </p>
+                ) : pendingPlan === "basic" ? (
+                  <p className="text-sm text-[#6B6B6B]">You will be switched to the free plan. Nothing is refunded.</p>
                 ) : (
-                  <p className="text-sm text-[#6B6B6B]">You will be switched to the free plan</p>
+                  <p className="text-sm text-[#6B6B6B]">No charge for this change. Nothing is refunded.</p>
                 )}
-                {balanceMinor !== null && pendingPrice > 0 && (
+                {balanceMinor !== null && pendingCharge > 0 && (
                   <p className="text-xs text-[#9B9B9B] mt-2">
-                    Current balance: {formatPence(balanceMinor)} → {formatPence(balanceMinor - pendingPrice)}
+                    Current balance: {formatPence(balanceMinor)} → {formatPence(balanceMinor - pendingCharge)}
                   </p>
                 )}
               </div>
