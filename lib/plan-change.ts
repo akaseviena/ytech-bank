@@ -19,7 +19,7 @@
 import type { Plan } from "@/types";
 
 /**
- * What change_plan answers when it refuses (the contract from migration 022, eleven codes, plus one).
+ * What change_plan answers when it refuses (the contract from migration 022: twelve codes).
  *
  * Its own six: FORBIDDEN, MISSING_REQUEST_ID, UNKNOWN_PLAN, NOT_PURCHASABLE, SAME_PLAN, NO_ACCOUNT.
  * Passed through from the posting function untranslated: INSUFFICIENT_FUNDS (the only one a person
@@ -29,8 +29,10 @@ import type { Plan } from "@/types";
  * NO_ACCOUNT, where this code first guessed INVALID_PLAN, ALREADY_ON_PLAN and NO_SUCH_ACCOUNT (which
  * is now a different code, from the posting function).
  *
- * CARD_FROZEN is not in the contract; whether a plan change goes through the door that checks a
- * frozen card is being looked into on the database side. It is handled in case it arrives.
+ * The twelfth is CARD_FROZEN. The plan change first went past the door that checks a frozen card (a
+ * defect, now fixed); the rule is now in the working function and says that money does not leave
+ * an account whose owner has a frozen card. A top-up and the welcome bonus are exempt by
+ * construction: they take from bank_promo, which has no owner and so no card.
  */
 export type PlanRefusal =
   | "FORBIDDEN"
