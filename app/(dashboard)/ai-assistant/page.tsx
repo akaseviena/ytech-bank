@@ -85,7 +85,7 @@ function LimitCard({ resetIn }: { resetIn: string }) {
           </div>
           <div>
             <p className="font-bold text-[#1A1A1A] mb-1.5">
-              You&apos;ve reached today&apos;s message limit (50/50) 🙏
+              You&apos;ve reached today&apos;s message limit ({DAILY_LIMIT}/{DAILY_LIMIT}) 🙏
             </p>
             <p className="text-sm text-[#6B6B6B] leading-relaxed">
               We&apos;re in early testing and keeping usage limits in place to make sure everyone gets a fair shot at trying Y-tech. Your limit resets at midnight UTC — thank you for helping us test!
@@ -166,18 +166,6 @@ export default function AIAssistantPage() {
     init();
   }, []);
 
-  async function persist(msgs: Message[]) {
-    if (!userIdRef.current || !convIdRef.current) return;
-    try {
-      await supabase.current.from("ai_conversations").upsert({
-        id: convIdRef.current,
-        user_id: userIdRef.current,
-        messages: msgs,
-        updated_at: new Date().toISOString(),
-      });
-    } catch { /* non-critical */ }
-  }
-
   async function sendMessage(text: string) {
     if (!text.trim() || loading || limitReached) return;
 
@@ -193,7 +181,8 @@ export default function AIAssistantPage() {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, conversationHistory }),
+        // the server saves the conversation (it is shared with the app); the browser only shows it
+        body: JSON.stringify({ message: text, conversationId: convIdRef.current || undefined, conversationHistory }),
       });
 
       if (res.status === 429) {
@@ -213,7 +202,6 @@ export default function AIAssistantPage() {
         };
         const finalMessages = [...newMessages, assistantMsg];
         setMessages(finalMessages);
-        await persist(finalMessages);
       }
     } catch {
       // silently ignore network errors

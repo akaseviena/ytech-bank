@@ -73,7 +73,7 @@ For contracts: provide a detailed template with all standard clauses, clearly ma
 For risk analysis: identify potential legal risks in the described situation and suggest mitigation strategies.
 For explanations: explain legal concepts in plain language with practical examples.
 Always include a reminder to consult a licensed attorney.
-Write in clear prose paragraphs; use numbered clauses only inside contract templates.` + FORMATTING,
+Write in clear prose paragraphs. When asked what something should cover or what to know, give one short paragraph per topic that opens with the topic's name, not a numbered or bulleted list. Numbered clauses are for contract templates only.` + FORMATTING,
 
   accountant: `You are an experienced accountant and financial advisor.
 For tax planning: provide strategies to legally minimise tax burden, common deductions, and quarterly planning tips.
@@ -202,10 +202,13 @@ export async function POST(request: NextRequest) {
       AGENT_HISTORY_WINDOW,
     );
 
-    console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-4-5-20250929, history:", history.length, "max_tokens:", MAX_TOKENS[agentType]);
+    console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-5, history:", history.length, "max_tokens:", MAX_TOKENS[agentType]);
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-sonnet-5",
+      // Sonnet 5 thinks by default when `thinking` is left out, and the thinking would be paid for as
+      // output and counted against max_tokens (1000-2000 here). The web has never thought; keep it so.
+      thinking: { type: "disabled" },
       max_tokens: MAX_TOKENS[agentType],
       // Prompt caching. The agent prompt goes FIRST (static, shared by every
       // user of this agent type) and the financial context SECOND — the reverse
@@ -235,7 +238,7 @@ export async function POST(request: NextRequest) {
       output_tokens: response.usage.output_tokens,
     }));
 
-    const result = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const result = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
 
     // Atomic increment — awaited so the write commits before the response returns.
     // Uses a SQL function: ON CONFLICT DO UPDATE SET message_count = message_count + 1

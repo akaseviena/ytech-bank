@@ -67,7 +67,7 @@ function LimitCard({ resetIn }: { resetIn: string }) {
           </div>
           <div>
             <p className="font-bold text-[#1A1A1A] mb-1.5">
-              You&apos;ve reached today&apos;s message limit (50/50) 🙏
+              You&apos;ve reached today&apos;s message limit ({DAILY_LIMIT}/{DAILY_LIMIT}) 🙏
             </p>
             <p className="text-sm text-[#6B6B6B] leading-relaxed">
               We&apos;re in early testing and keeping usage limits in place to make sure everyone gets a fair shot at trying Y-tech. Your limit resets at midnight UTC — thank you for helping us test!

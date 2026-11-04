@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { windowHistory, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
 import { DAILY_LIMIT } from "@/lib/daily-limit";
 import { buildWebContext } from "@/lib/web-context";
+import { commit } from "@/lib/mobile/conversation-store";
+import type { StoredMessage } from "@/lib/mobile/reply-stream";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -12,6 +14,8 @@ export const dynamic = "force-dynamic";
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ── Static system prompt ─────────────────────────────────────────────────────
 // Byte-identical on every request for every user. Anthropic renders the prompt
@@ -57,10 +61,31 @@ export async function POST(request: NextRequest) {
   }
   // --- End daily usage check ---
 
-  const { message, conversationHistory } = await request.json() as {
+  const { message, conversationId, conversationHistory } = await request.json() as {
     message: string;
-    conversationHistory: { role: "user" | "assistant"; content: string }[];
+    /** the conversation this message belongs to; without it nothing is saved (and the history is the browser's) */
+    conversationId?: string;
+    conversationHistory?: { role: "user" | "assistant"; content: string }[];
   };
+
+  // The conversation is shared with the app (same table, same row), so it is saved here, by the
+  // server, through commit (lib/mobile/conversation-store.ts): this request adds its own two
+  // messages to the conversation as it is now. The browser used to write back the whole list it
+  // had loaded when the page opened, which wiped out whatever the app had added since.
+  const rid = crypto.randomUUID();
+  const ref = conversationId && UUID.test(conversationId) ? { id: conversationId, userId: user.id } : null;
+  const question: StoredMessage = { role: "user", content: message, timestamp: new Date().toISOString() };
+  let stored: StoredMessage[] | null = null;
+  if (ref) {
+    const { data } = await supabase.from("ai_conversations").select("messages").eq("id", ref.id).eq("user_id", user.id).is("agent_id", null).maybeSingle();
+    stored = (data?.messages as StoredMessage[] | undefined) ?? [];
+    try {
+      await commit(supabase, ref, { rid, user: question });
+    } catch (err) {
+      console.error("[ai] saving the question failed:", err);
+      return NextResponse.json({ error: "Could not save your message. Please try again." }, { status: 503 });
+    }
+  }
 
   // Per-user session context — volatile relative to STATIC_SYSTEM_PROMPT, so it renders
   // after it. What it holds is decided by the table in lib/context-fields.ts (the same one
@@ -69,18 +94,22 @@ export async function POST(request: NextRequest) {
   // turn 2+.
   const userContext = await buildWebContext(supabase, user.id, "assistant");
 
-  // The browser sends the whole conversation; the model gets a window of it
-  // (lib/history-window.ts, same constants as the mobile assistant). While the
-  // conversation fits the window the older part is stable and the cache below
-  // keeps reading it; once it is longer, the window slides every turn and the
-  // history is re-sent at full price — bounded, but no longer cached.
+  // The model gets a window of the saved conversation (lib/history-window.ts, same constants as
+  // the mobile assistant), read from the database so it includes what the app wrote; the
+  // browser's copy is only used when there is no conversation to read. While the conversation
+  // fits the window the older part is stable and the cache below keeps reading it; once it is
+  // longer, the window slides every turn and the history is re-sent at full price — bounded,
+  // but no longer cached.
   const history: Anthropic.Messages.MessageParam[] = windowHistory(
-    (conversationHistory ?? []).map((h) => ({ role: h.role, content: h.content })),
+    (stored ?? conversationHistory ?? []).map((h) => ({ role: h.role, content: h.content })),
     ASSISTANT_HISTORY_WINDOW,
   );
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+    model: "claude-sonnet-5",
+    // Sonnet 5 thinks by default when `thinking` is left out, and the thinking would be paid for as
+    // output and counted against max_tokens (1000-2000 here). The web has never thought; keep it so.
+    thinking: { type: "disabled" },
     max_tokens: 1000,
     // Prompt caching. Two breakpoints, spending 2 of the 4 the API allows:
     //   1. end of system  — covers static prompt + this user's financial context,
@@ -107,7 +136,16 @@ export async function POST(request: NextRequest) {
     output_tokens: response.usage.output_tokens,
   }));
 
-  const reply = response.content[0].type === "text" ? response.content[0].text : "";
+  const reply = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
+  // a reply that stopped at the length limit is marked, so the app can offer to continue it
+  const truncated = response.stop_reason === "max_tokens";
+  if (ref) {
+    try {
+      await commit(supabase, ref, { rid, user: question, reply: { text: reply, cut: truncated, at: new Date().toISOString() } });
+    } catch (err) {
+      console.error("[ai] saving the reply failed:", err);
+    }
+  }
 
   // Atomic increment — awaited so the write commits before the response returns.
   // Uses a SQL function: ON CONFLICT DO UPDATE SET message_count = message_count + 1
@@ -117,5 +155,5 @@ export async function POST(request: NextRequest) {
   });
   const newCount = (rpcResult as number | null) ?? currentCount + 1;
 
-  return NextResponse.json({ reply, messagesUsed: newCount });
+  return NextResponse.json({ reply, messagesUsed: newCount, truncated });
 }
