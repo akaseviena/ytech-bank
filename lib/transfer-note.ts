@@ -18,8 +18,10 @@
 //                        writes "From <name>" and never a bare name.
 //   POST /api/mobile/transfer   passes the client's text through unchanged (up to 140 characters).
 //   POST /api/subscription      the six texts in APP_WRITTEN_NOTES below.
-//   SQL (welcome bonus, balance adjustments)   written by migrations, outside this repo, on the
-//                        promo and migration rails, which are left out of every context.
+//   SQL (outside this repo)   claim_demo_topup (migration 023) writes "Demo top-up";
+//                        grant_welcome_bonus (migration 001) writes "Welcome demo balance", on the promo
+//                        rail, which, like the migration rail, is left out of every context; balance
+//                        adjustments are written the same way.
 // So a note is the person's own words, or "To <name>" put in by the app, or one of our fixed
 // texts. A filter that catches "To <name>" alone would miss the typed notes, and one that
 // reads typed notes cannot tell a name from a word: sanitizeTransactionText strips control and
@@ -29,7 +31,10 @@
 // Erasable TypeScript only, so `node --test` can run lib/transfer-note.test.mjs
 // against this file directly.
 
-// The texts /api/subscription writes (plan names as in lib/plans.ts, basic is free).
+// The texts the app itself writes on a transfer: the plan charges (plan names as in lib/plans.ts,
+// basic is free) and the two demo-money notes the database writes. Each is exact: one character off
+// and a typed note would pass for ours. The two demo-money strings were supplied by the side that
+// writes them and are not to be renamed (they are already on existing rows).
 const APP_WRITTEN_NOTES: ReadonlySet<string> = new Set([
   "Subscription - Standard plan",
   "Subscription - Travel plan",
@@ -37,6 +42,8 @@ const APP_WRITTEN_NOTES: ReadonlySet<string> = new Set([
   "Subscription - Ultimate plan",
   "Subscription - Business plan",
   "Subscription refund - plan change failed",
+  "Demo top-up",
+  "Welcome demo balance",
 ]);
 
 /** The note, if this app wrote it; null for anything a person typed or a client filled in. */
