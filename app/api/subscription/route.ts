@@ -90,6 +90,8 @@ export async function POST(request: NextRequest) {
     }
     if (!result?.ok) {
       if (result?.code === "INSUFFICIENT_FUNDS") return NextResponse.json({ error: "Insufficient balance" }, { status: 400 });
+      // a frozen card stops every payment out of the account, a plan charge included
+      if (result?.code === "CARD_FROZEN") return NextResponse.json({ error: "Your card is frozen. Unfreeze it to change your plan.", code: "CARD_FROZEN" }, { status: 400 });
       console.error("[subscription] post_transfer refused:", result);
       return NextResponse.json({ error: "Failed to charge plan" }, { status: 500 });
     }

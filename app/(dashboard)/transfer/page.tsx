@@ -24,6 +24,7 @@ const stepVariants = {
 
 // post_transfer answers { ok: false, code } when it refuses.
 const REFUSAL_TEXT: Record<string, string> = {
+  CARD_FROZEN: "Your card is frozen. Unfreeze it to send money.",
   INSUFFICIENT_FUNDS: "Insufficient funds",
   INVALID_AMOUNT: "Invalid amount",
   SAME_ACCOUNT: "You cannot send money to yourself",
@@ -143,9 +144,9 @@ export default function TransferPage() {
   async function handleSend() {
     const pence = validateTransfer();
     if (pence === null) return;
-    // A frozen card stops card payments, not transfers between people, but the
-    // product still asks the person to unfreeze first. This is an interface
-    // prompt only: post_transfer does not know about the card (decided).
+    // A frozen card stops payments out of the account, transfers included (decided), and
+    // post_transfer enforces it for every caller. This prompt only saves the round trip:
+    // the database is what refuses.
     if (frozen) { setShowFrozenModal(true); return; }
     await performTransfer(pence);
   }
@@ -168,6 +169,8 @@ export default function TransferPage() {
     setSending(false);
     if (error || !data?.ok) {
       showToast("error", "Transfer failed", REFUSAL_TEXT[data?.code] ?? error?.message ?? "Please try again.");
+      // frozen on the phone after this page was opened: offer to unfreeze, as for a card seen frozen
+      if (data?.code === "CARD_FROZEN") { setFrozen(true); setShowFrozenModal(true); }
       return;
     }
     setSuccess(true);

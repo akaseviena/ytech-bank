@@ -13,9 +13,11 @@ const schema = z.object({
   category: z.string().max(32).nullable().optional(),
 });
 
-// RPC error codes that map to 400
-const BAD_REQUEST_CODES = new Set(["INSUFFICIENT_FUNDS", "INVALID_AMOUNT", "SAME_ACCOUNT", "CURRENCY_MISMATCH"]);
+// RPC error codes that map to 400. CARD_FROZEN: the source account's owner has a frozen card;
+// post_transfer refuses every payment out of the account, whoever calls it, and says why.
+const BAD_REQUEST_CODES = new Set(["INSUFFICIENT_FUNDS", "INVALID_AMOUNT", "SAME_ACCOUNT", "CURRENCY_MISMATCH", "CARD_FROZEN"]);
 const REFUSAL_TEXT: Record<string, string> = {
+  CARD_FROZEN: "Your card is frozen. Unfreeze it to send money.",
   INSUFFICIENT_FUNDS: "Insufficient funds.",
   INVALID_AMOUNT: "Invalid amount.",
   SAME_ACCOUNT: "You cannot transfer to your own account.",
@@ -101,7 +103,7 @@ export async function POST(request: Request) {
     const code = rpcError.code ?? "";
     const msg = rpcError.message ?? "Transfer failed.";
     if (BAD_REQUEST_CODES.has(code)) {
-      return Response.json({ error: code, message: msg }, { status: 400 });
+      return Response.json({ error: code, message: REFUSAL_TEXT[code] ?? msg }, { status: 400 });
     }
     if (FORBIDDEN_CODES.has(code)) {
       return Response.json({ error: "FORBIDDEN", message: "Transfer not permitted." }, { status: 403 });
