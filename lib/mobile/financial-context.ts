@@ -7,7 +7,9 @@ import { runwayText } from "@/lib/runway";
 import {
   CONTEXT_AGENT_LABEL,
   RECENT_TRANSFERS_SHOWN,
+  HISTORY_INCOMPLETE,
   TRANSFERS_FOR_TOTALS,
+  derivesFromTransfers,
   fieldSet,
   type ContextAgent,
 } from "@/lib/context-fields";
@@ -98,6 +100,8 @@ async function compose(userId: string, agent: ContextAgent, db: SupabaseClient):
   } else {
     const id = account.accountId;
     if (fields.has("balance")) out.push(`Balance: ${money(s, account.balanceMinor)} ${currency}`);
+    // right under the balance and before every figure worked out from transfers
+    if (derivesFromTransfers(fields)) out.push(HISTORY_INCOMPLETE);
 
     const month = totals(rows.month, id);
     const monthCategories = spendByCategory(rows.month, id);

@@ -5,6 +5,7 @@ import {
   CONTEXT_FIELD_TEXT,
   NEVER_SENT,
   NOTES_SENT,
+  HISTORY_INCOMPLETE,
   RECENT_TRANSFERS_SHOWN,
   TRANSFERS_FOR_TOTALS,
   type ContextAgent,
@@ -30,6 +31,8 @@ export interface ContextLayout {
   conversationWindow: { assistant: number; specialist: number };
   neverSent: string[];
   notesSent: string;
+  /** said in each context that carries anything worked out from transfers: the balance includes demo top-ups, which none of it shows */
+  historyIncomplete: string;
 }
 
 export function contextLayout(): ContextLayout {
@@ -43,5 +46,6 @@ export function contextLayout(): ContextLayout {
     conversationWindow: { assistant: ASSISTANT_HISTORY_WINDOW, specialist: AGENT_HISTORY_WINDOW },
     neverSent: [...NEVER_SENT],
     notesSent: NOTES_SENT,
+    historyIncomplete: HISTORY_INCOMPLETE,
   };
 }

@@ -72,9 +72,47 @@ export const NEVER_SENT: readonly string[] = [
   "the names or account details of the people you pay or who pay you",
 ];
 
-/** The one exception to "notes are not sent": see lib/transfer-note.ts. */
+/**
+ * The one exception to "notes are not sent": see lib/transfer-note.ts.
+ *
+ * This is true because demo top-ups and the welcome bonus are on the promo rail, which no context
+ * reads: the filter would let their notes through ("Demo top-up", "Welcome demo balance"), so if
+ * those ever move to a rail that is read, this sentence must name them too.
+ */
 export const NOTES_SENT =
   "The notes people type on a payment are not sent either; the only notes included are the fixed texts of Y-tech's own subscription charges.";
+
+/**
+ * Said in every context that carries anything worked out from transfers, because that history is
+ * not the whole story: demo top-ups are on the promo rail on purpose (on a rail that is read they
+ * would distort the runway, "received this month" and month-on-month), so the balance includes money
+ * the figures below do not show. Without the sentence the gap reads as an error. It is one sentence
+ * for all of them, and says nothing about what kind of figure follows, so it stays true if another
+ * rail drops out of the context. It is a sentence, not a field, so it sits in the shared layout
+ * (contextLayout().historyIncomplete) where the pre-release check sees it; the words are fixed by
+ * the mobile side, which tests that the consent text does not need to change for it.
+ */
+export const HISTORY_INCOMPLETE = "The balance includes demo top-ups. They do not appear in anything below.";
+
+/** Fields worked out from transfers, and so affected by what the transfers leave out. */
+export const TRANSFER_DERIVED_FIELDS: readonly ContextField[] = [
+  "month_spent",
+  "month_received",
+  "month_business_spent",
+  "month_categories",
+  "month_vs_previous",
+  "last_transfers_totals",
+  "recent_transfers",
+  "runway",
+];
+
+/** Fields that are not (the test makes every field one or the other, so a new one has to be placed). */
+export const NOT_FROM_TRANSFERS: readonly ContextField[] = ["plan", "balance", "goals"];
+
+/** Does this set of fields include anything worked out from transfers? Then it comes with HISTORY_INCOMPLETE. */
+export function derivesFromTransfers(fields: ReadonlySet<ContextField>): boolean {
+  return TRANSFER_DERIVED_FIELDS.some((f) => fields.has(f));
+}
 
 export const CONTEXT_AGENT_LABEL: Record<ContextAgent, string> = {
   assistant: "AI Assistant",

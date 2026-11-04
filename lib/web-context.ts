@@ -3,7 +3,14 @@ import { sanitizeTransactionText } from "@/lib/sanitize-transaction-text";
 import { loadContextRows, spendByCategory, totals, categoryLine } from "@/lib/ledger";
 import { formatPence, ledgerPence, numericToPence } from "@/lib/money";
 import { runwayText } from "@/lib/runway";
-import { RECENT_TRANSFERS_SHOWN, TRANSFERS_FOR_TOTALS, fieldSet, type ContextAgent } from "@/lib/context-fields";
+import {
+  HISTORY_INCOMPLETE,
+  RECENT_TRANSFERS_SHOWN,
+  TRANSFERS_FOR_TOTALS,
+  derivesFromTransfers,
+  fieldSet,
+  type ContextAgent,
+} from "@/lib/context-fields";
 
 // The financial context for the web assistant and the web NeuroOffice agents. What goes
 // in is decided by lib/context-fields.ts, the same table the app reads (see
@@ -40,6 +47,8 @@ export async function buildWebContext(
   } else {
     const id = account.accountId;
     if (fields.has("balance")) out.push(`Balance: ${formatPence(account.balanceMinor)}`);
+    // right under the balance and before every figure worked out from transfers
+    if (derivesFromTransfers(fields)) out.push(HISTORY_INCOMPLETE);
 
     const month = totals(rows.month, id);
     const monthLabel = now.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
