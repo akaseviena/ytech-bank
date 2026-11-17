@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ledgerPence, type Pence } from "@/lib/money";
 import { isSubscription } from "@/lib/ledger-label";
+import { DELETED_PERSON, personName } from "@/lib/person-name";
 import { appWrittenNote } from "@/lib/transfer-note";
 import { RECENT_TRANSFERS_SHOWN, TRANSFERS_FOR_TOTALS, type ContextField } from "@/lib/context-fields";
 import { RUNWAY_WINDOW_DAYS } from "@/lib/runway";
@@ -143,7 +144,7 @@ export async function resolveCounterparties(
   }
 
   const ownerIds = Array.from(new Set(accounts.filter((a) => a.kind === "main" && a.owner_id).map((a) => a.owner_id as string)));
-  const people = new Map<string, { first_name: string; last_name: string; avatar_url: string | null }>();
+  const people = new Map<string, { first_name: string | null; last_name: string | null; avatar_url: string | null }>();
   for (const ids of chunk(ownerIds, 100)) {
     const { data, error } = await admin.from("profiles").select("id,first_name,last_name,avatar_url").in("id", ids);
     if (error) throw new Error(`profiles lookup failed: ${error.message}`);
@@ -154,7 +155,10 @@ export async function resolveCounterparties(
   for (const a of accounts) {
     if (a.kind === "main") {
       const p = a.owner_id ? people.get(a.owner_id) : undefined;
-      out.set(a.id, { name: p ? `${p.first_name} ${p.last_name}` : "Unknown", avatarUrl: p?.avatar_url ?? null, kind: a.kind });
+      // Someone who deleted their account: the profile is emptied (names null) or gone, the transfer
+      // stays in this person's history. Show that, never "null null" and never a leftover picture.
+      const name = p ? personName(p.first_name, p.last_name) : null;
+      out.set(a.id, { name: name ?? DELETED_PERSON, avatarUrl: name ? (p?.avatar_url ?? null) : null, kind: a.kind });
     } else {
       out.set(a.id, { name: SYSTEM_NAME[a.kind] ?? "Y-tech", avatarUrl: null, kind: a.kind });
     }

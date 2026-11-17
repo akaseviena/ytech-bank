@@ -34,8 +34,9 @@ const REFUSAL_TEXT: Record<string, string> = {
 };
 
 /** "Anna A." -> "AA" */
-function initialsOf(displayName: string): string {
-  const words = displayName.replace(/\./g, "").split(/\s+/).filter(Boolean);
+function initialsOf(displayName: string | null | undefined): string {
+  // a name can be missing (someone who deleted their account): no initials, not an error
+  const words = (displayName ?? "").replace(/\./g, "").split(/\s+/).filter(Boolean);
   return words.slice(0, 2).map((w) => w.charAt(0)).join("").toUpperCase();
 }
 
