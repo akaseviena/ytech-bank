@@ -13,6 +13,14 @@ export const metadata = {
   description: "How Y-tech collects, uses, and protects your personal data.",
 };
 
+// The "Deleting your account" section describes something the app cannot do yet: the database
+// function and the screen are being written. A policy must not promise a button that is not there,
+// so until the release that ships them the older sentence in "How long we keep it" stays and the
+// section is hidden. Flip this in that same release, after checking the section against what the
+// function really erases (conversations, savings goals, notifications, date of birth, usage
+// counters) and against the exact path to the screen.
+const ACCOUNT_DELETION_LIVE = false;
+
 export default function PrivacyPage() {
   const layout = contextLayout();
   return (
@@ -21,7 +29,7 @@ export default function PrivacyPage() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 80px" }}>
         <p style={{ fontSize: 13, color: "#9B9B9B", marginBottom: 8 }}>
-          Last updated: 2 November 2026
+          Last updated: 17 November 2026
         </p>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1A1A1A", marginBottom: 8, lineHeight: 1.2 }}>
           Privacy Policy — Y-tech prototype
@@ -71,6 +79,21 @@ export default function PrivacyPage() {
           <p>
             <strong>Automatically:</strong> IP address, browser type, pages requested and error
             logs, recorded by our hosting provider to keep the service running and secure.
+          </p>
+        </Section>
+
+        <Section id="what-others-see" title="What other Y-tech users see about you">
+          <p>
+            When someone sends a demonstration transfer, they choose the person to send it to from
+            a list. That list shows your first name and the first letter of your surname (for
+            example &quot;Anna A.&quot;), your Y-tech account reference and your profile picture if
+            you have added one. To make sure a new user is not shown an empty list, it is filled up
+            with other Y-tech users, so anyone who uses it repeatedly can come to see the names of
+            many users. We have chosen to tell you this plainly rather than hide it.
+          </p>
+          <p>
+            Once you and another person have exchanged a transfer, it appears in both of your
+            histories, and each of you sees the other&apos;s full name next to it.
           </p>
         </Section>
 
@@ -152,12 +175,37 @@ export default function PrivacyPage() {
 
         <Section id="retention" title="How long we keep it">
           <p>
-            Your account data is kept while your account is open. If you ask us to delete your
-            account, we delete it and its transactions within 30 days. Technical logs are kept for
-            up to 30 days. Prototype data may also be reset in full as the product develops — we
-            will tell you before we do that.
+            Your account data is kept while your account is open.{" "}
+            {!ACCOUNT_DELETION_LIVE &&
+              "If you ask us to delete your account, we delete it and its transactions within 30 days. "}
+            Technical logs are kept for up to 30 days. Prototype data may also be reset in full as
+            the product develops — we will tell you before we do that.
           </p>
         </Section>
+
+        {ACCOUNT_DELETION_LIVE && (
+          <Section id="deleting-your-account" title="Deleting your account">
+            <p>
+              You can delete your account yourself in the Y-tech app. It takes effect at once and
+              cannot be undone. It removes your sign-in and clears your name, email address, phone
+              number, account number and profile picture.
+            </p>
+            <p>
+              Your plan ends immediately. Your demo funds are closed. There is no refund and there
+              will be no further charges. Nothing is billed through the App Store, so there is
+              nothing to cancel there.
+            </p>
+            <p>
+              Transfers you made or received are kept, because each is also part of the other
+              person&apos;s record of what they sent and received. On their side your name is
+              replaced by &quot;Deleted user&quot; and your picture is not shown.
+            </p>
+            <p>
+              If you use only the web app, email us and we will delete your account in the same way
+              within one month.
+            </p>
+          </Section>
+        )}
 
         <Section id="your-rights" title="Your rights">
           <p>

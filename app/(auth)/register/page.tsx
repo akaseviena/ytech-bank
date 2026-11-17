@@ -316,6 +316,11 @@ export default function RegisterPage() {
                       This is an early-access prototype using demonstration funds. Please do not
                       enter real financial information.
                     </p>
+                    <p className="text-xs font-inter text-[#9B9B9B] leading-snug">
+                      When other Y-tech users choose who to send money to, they see your first name
+                      and the first letter of your surname. After a transfer between you, your full
+                      name appears in their history.
+                    </p>
                   </div>
 
                   <GoldButton type="submit" size="lg" className="w-full mt-2" disabled={!termsWatched}>
