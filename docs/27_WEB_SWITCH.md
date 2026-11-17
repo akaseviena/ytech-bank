@@ -98,8 +98,9 @@ pounds_to_pence(numeric) returns bigint            immutable
 ```
 
 `search_recipients` и `recent_recipients` — поиск получателей для экрана перевода и список по
-умолчанию до ввода запроса; EXECUTE у обеих выдан `authenticated`. Атрибуты и права — по замеру
-аудита прав базы (16 ноября 2026), не по этому документу.
+умолчанию до ввода запроса. EXECUTE у обеих выдан `authenticated`, `service_role` и `postgres`, и
+больше никому (`anon` и `public` не встречаются). Обе `security definer` с `search_path=public`.
+Всё это — по замеру живой базы от 17 ноября 2026, не по этому документу.
 
 ---
 

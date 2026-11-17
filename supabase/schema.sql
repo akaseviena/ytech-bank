@@ -18,11 +18,11 @@
 --   transactions           the old history table. Replaced by transfers.
 --   ai_conversations       has no agent_id here; the live table has it (null for the main
 --                          assistant, an agent id for a NeuroOffice agent).
---   recent_recipients()    returns profile rows here. NOT VERIFIED against the database that the
---                          live function differs: the only source is the comment on Recipient in
---                          types/index.ts, which says it returns a ledger account id and a short
---                          display name. To be replaced by the result of
---                          select pg_get_functiondef(oid) from pg_proc where proname = 'recent_recipients';
+--   recent_recipients()    returns profile rows here. The live function is account based (read
+--                          from pg_get_functiondef on the live database, 17 November 2026):
+--                          RETURNS TABLE(account_id uuid, display_name text, account_ref text,
+--                          avatar_url text, is_recent boolean), LANGUAGE sql, SECURITY DEFINER,
+--                          SET search_path TO 'public'. account_ref is the account's iban_display.
 --   generate_account_number(), handle_new_user()
 --                          defined here without a pinned search_path (and the first without
 --                          SECURITY DEFINER). In the database every SECURITY DEFINER function
