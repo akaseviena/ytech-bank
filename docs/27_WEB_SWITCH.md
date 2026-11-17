@@ -92,9 +92,14 @@ post_transfer(p_from uuid, p_to uuid, p_amount_minor bigint,
               p_description text, p_category text, p_rail text,
               p_idempotency_key text)              security definer
 
-search_transfer_recipients(q text)                 security definer
+search_recipients(q text)                          security definer, search_path=public
+recent_recipients()                                security definer, search_path=public
 pounds_to_pence(numeric) returns bigint            immutable
 ```
+
+`search_recipients` и `recent_recipients` — поиск получателей для экрана перевода и список по
+умолчанию до ввода запроса; EXECUTE у обеих выдан `authenticated`. Атрибуты и права — по замеру
+аудита прав базы (16 ноября 2026), не по этому документу.
 
 ---
 
@@ -127,7 +132,7 @@ pounds_to_pence(numeric) returns bigint            immutable
 | баланс из `profiles.balance` | `account_balances.balance_minor`, счёт `kind='main'` по `owner_id` |
 | история из `transactions` | `transfers`, где человек владеет счётом-источником или счётом-получателем |
 | перевод через `transfer_funds` | RPC `post_transfer` |
-| поиск получателей `search_recipients` | `search_transfer_recipients` |
+| поиск получателей `search_transfer_recipients` (по профилям; снесена миграцией 029) | `search_recipients` (по счетам) |
 
 **Чтения и записи переключаются в одном развёртывании.** Если
 переключить записи раньше чтений, люди увидят замерший баланс

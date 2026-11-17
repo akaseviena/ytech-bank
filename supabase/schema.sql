@@ -1,3 +1,37 @@
+-- =============================================================================
+-- THIS FILE IS NOT THE SOURCE OF TRUTH ABOUT THE CURRENT SCHEMA.
+--
+-- It is the schema as first written, edited here and there afterwards, and it was never
+-- regenerated after the move to the ledger. The live database is the reference. Changes to it
+-- are recorded as migrations (the other files in this directory); those are history and are not
+-- edited, even where they describe something that has since been removed. A full regeneration of
+-- this file from the database is planned for after the beta.
+--
+-- What is wrong or missing here (not a complete list):
+--
+--   profiles.balance       the old money rail, in pounds. Money now lives in the ledger
+--                          (accounts, transfers, account_balances), in whole pence.
+--   profiles.card_frozen   to be dropped by migration 025 (written, not applied yet when this was
+--                          written). The frozen state lives in cards.status.
+--   transfer_funds()       the old transfer function. Replaced by post_transfer; it still exists
+--                          but is granted to nobody.
+--   transactions           the old history table. Replaced by transfers.
+--   ai_conversations       has no agent_id here; the live table has it (null for the main
+--                          assistant, an agent id for a NeuroOffice agent).
+--   recent_recipients()    returns profile rows here. NOT VERIFIED against the database that the
+--                          live function differs: the only source is the comment on Recipient in
+--                          types/index.ts, which says it returns a ledger account id and a short
+--                          display name. To be replaced by the result of
+--                          select pg_get_functiondef(oid) from pg_proc where proname = 'recent_recipients';
+--   generate_account_number(), handle_new_user()
+--                          defined here without a pinned search_path (and the first without
+--                          SECURITY DEFINER). In the database every SECURITY DEFINER function
+--                          pins it; see fix-registration.sql.
+--   not here at all        accounts, transfers, account_balances, cards, plans, post_transfer,
+--                          change_plan, card_get, card_set_frozen, and everything else added
+--                          since the ledger.
+-- =============================================================================
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS profiles (
