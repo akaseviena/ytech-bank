@@ -109,43 +109,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- KL-001. Recipient search for the profiles/transfer_funds rail (web
--- transfer flow). Deliberately separate from search_recipients, which
--- belongs to the accounts/transfers rail (mobile) and must not be touched —
--- see supabase/add-search-transfer-recipients-fn.sql for the full writeup.
-CREATE OR REPLACE FUNCTION search_transfer_recipients(q TEXT)
-RETURNS TABLE (
-  id UUID,
-  first_name TEXT,
-  last_name TEXT,
-  account_number TEXT,
-  avatar_url TEXT,
-  plan TEXT
-)
-SECURITY DEFINER
-SET search_path = public
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT id, first_name, last_name, account_number, avatar_url, plan
-  FROM profiles
-  WHERE length(btrim(q)) >= 3
-    AND id <> auth.uid()
-    AND (
-      first_name ILIKE '%' || q || '%'
-      OR last_name ILIKE '%' || q || '%'
-      OR account_number ILIKE '%' || q || '%'
-    )
-  ORDER BY first_name, last_name
-  LIMIT 8;
-$$;
-
-REVOKE ALL ON FUNCTION search_transfer_recipients(TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION search_transfer_recipients(TEXT) TO authenticated;
-
 -- Default recipient list for the transfer screen, shown before the user
 -- types anything — see supabase/add-recent-recipients-fn.sql for the full
--- writeup. Same rail and security posture as search_transfer_recipients.
+-- writeup.
 CREATE OR REPLACE FUNCTION recent_recipients()
 RETURNS TABLE (
   id UUID,
@@ -225,9 +191,8 @@ CREATE POLICY "own profile" ON profiles FOR ALL USING (auth.uid() = id);
 
 -- KL-001. No broad "search profiles" policy — SELECT is scoped to your own
 -- row only (see "own profile" above). Recipient search for the web transfer
--- flow goes through search_transfer_recipients(), which is SECURITY
--- DEFINER and returns only id/first_name/last_name/account_number/
--- avatar_url/plan, never email/phone/balance/card_frozen/etc.
+-- flow goes through the SECURITY DEFINER recipient functions (search_recipients
+-- and recent_recipients), not through a policy on profiles.
 DROP POLICY IF EXISTS "search profiles" ON profiles;
 
 -- SELECT: covers all transactions involving the user, including null-receiver withdrawals
