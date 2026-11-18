@@ -77,7 +77,7 @@ async function compose(userId: string, agent: ContextAgent, db: SupabaseClient):
     loadContextRows(db, userId, fields, nowDate),
     fields.has("plan") ? db.from("profiles").select("plan").eq("id", userId).single() : null,
     fields.has("goals")
-      ? db.from("savings_goals").select("name, target_amount, current_amount, emoji, deadline").eq("user_id", userId)
+      ? db.from("savings_goals").select("target_amount, current_amount, deadline").eq("user_id", userId)
       : null,
   ]);
 
@@ -172,7 +172,7 @@ async function compose(userId: string, agent: ContextAgent, db: SupabaseClient):
       ...(goals.length
         ? goals.map(
             (g) =>
-              `  ${g.emoji ?? "🎯"} ${g.name}: ${money(s, numericToPence(Number(g.current_amount)))} / ${money(s, numericToPence(Number(g.target_amount)))}${g.deadline ? " (by " + g.deadline.slice(0, 10) + ")" : ""}`,
+              `  ${money(s, numericToPence(Number(g.current_amount)))} saved of ${money(s, numericToPence(Number(g.target_amount)))}${g.deadline ? " (by " + g.deadline.slice(0, 10) + ")" : ""}`,
           )
         : ["  None"]),
     );

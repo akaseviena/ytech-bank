@@ -34,7 +34,7 @@ export async function buildWebContext(
     loadContextRows(db, userId, fields, now),
     fields.has("plan") ? db.from("profiles").select("plan").eq("id", userId).single() : null,
     fields.has("goals")
-      ? db.from("savings_goals").select("name, emoji, target_amount, current_amount, deadline").eq("user_id", userId)
+      ? db.from("savings_goals").select("target_amount, current_amount, deadline").eq("user_id", userId)
       : null,
   ]);
 
@@ -117,7 +117,7 @@ export async function buildWebContext(
           ? goals
               .map(
                 (g) =>
-                  `${g.emoji ?? "🎯"} ${g.name}: ${formatPence(numericToPence(Number(g.current_amount)))}/${formatPence(numericToPence(Number(g.target_amount)))}${g.deadline ? " (by " + String(g.deadline).slice(0, 10) + ")" : ""}`,
+                  `${formatPence(numericToPence(Number(g.current_amount)))} saved of ${formatPence(numericToPence(Number(g.target_amount)))}${g.deadline ? " (by " + String(g.deadline).slice(0, 10) + ")" : ""}`,
               )
               .join(", ")
           : "None"

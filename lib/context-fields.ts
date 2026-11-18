@@ -33,7 +33,8 @@ export const CONTEXT_FIELD_TEXT = {
   last_transfers_totals: `Money in, money out and the difference over your ${TRANSFERS_FOR_TOTALS} most recent transfers`,
   recent_transfers: `Your ${RECENT_TRANSFERS_SHOWN} most recent transfers, one by one: the amount, whether you sent or received it, and its category`,
   runway: "An estimate of how many days your balance would last at the pace of the last 30 days, when there is enough history to give one",
-  goals: "Your savings goals: name, target, amount saved and deadline",
+  // the name (and the emoji, which says what a goal is for) is not sent: the model gets the figures only
+  goals: "Your savings goals: target, amount saved and deadline",
 } as const;
 
 export type ContextField = keyof typeof CONTEXT_FIELD_TEXT;
