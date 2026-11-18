@@ -72,7 +72,7 @@ export async function deleteAccount(session: SupabaseClient, admin: SupabaseClie
   } catch (err) {
     // stop before the sign-in goes: after it there would be nobody left to retry this
     console.error("[account-deletion] removing the picture failed:", err);
-    return failure(500, "cleanup_failed", TRY_AGAIN);
+    return failure(503, "cleanup_failed", TRY_AGAIN);
   }
 
   // 3. the sign-in
@@ -80,11 +80,11 @@ export async function deleteAccount(session: SupabaseClient, admin: SupabaseClie
     const { error } = await admin.auth.admin.deleteUser(userId);
     if (error && error.status !== 404 && !/not.?found/i.test(error.message)) {
       console.error("[account-deletion] removing the sign-in failed:", error.message);
-      return failure(500, "auth_delete_failed", TRY_AGAIN);
+      return failure(503, "auth_delete_failed", TRY_AGAIN);
     }
   } catch (err) {
     console.error("[account-deletion] removing the sign-in threw:", err);
-    return failure(500, "auth_delete_failed", TRY_AGAIN);
+    return failure(503, "auth_delete_failed", TRY_AGAIN);
   }
 
   // 4. Mark it done. The person is already gone, so a failure here must not be reported as a

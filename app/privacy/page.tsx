@@ -186,8 +186,8 @@ export default function PrivacyPage() {
         {ACCOUNT_DELETION_LIVE && (
           <Section id="deleting-your-account" title="Deleting your account">
             <p>
-              You can delete your account yourself in the Y-tech app. It takes effect at once and
-              cannot be undone. It removes your sign-in and your profile: your name, email address,
+              You can delete your account yourself in the Y-tech app, under Settings → Delete
+              account. It takes effect at once and cannot be undone. It removes your sign-in and your profile: your name, email address,
               phone number, account number and picture.
             </p>
             <p>

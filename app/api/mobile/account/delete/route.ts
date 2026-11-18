@@ -24,7 +24,12 @@ export const maxDuration = 60;
 //   403 { error: "forbidden" }
 //   409 { error: CODE, message }         the database refused (CODE is its code, e.g. a reason the
 //                                        account cannot be closed yet); show `message`
-//   500 { error: "upstream_error" | "cleanup_failed" | "auth_delete_failed", message }  try again
+// Two states, not three, because the status says what the person should do, not which step stopped:
+//   503 { error: "cleanup_failed" | "auth_delete_failed", message }   the data is already gone, the
+//                                        sign-in still works, the server has not finished: the person
+//                                        sends the same request again (the app has its own words)
+//   500 { error: "upstream_error", message }   the database function did not answer, so nothing has
+//                                        happened: try again from the start
 const schema = z.object({ confirm: z.literal(true) });
 
 export async function POST(request: Request) {
