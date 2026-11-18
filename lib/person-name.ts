@@ -27,14 +27,17 @@ export function personLabel(first: string | null | undefined, last: string | nul
  * "To <name>", a copy of what the row's heading already says. When the note is exactly that, for a
  * name this person is known by (the short one or the full one), it adds nothing and is hidden; any
  * other note is somebody's own words and is shown. Exact, not a guess: "To Anna A. for lunch" and
- * "Rent" stay.
+ * "Rent" stay. Runs of spaces count as one on both sides: the recipient search builds the short
+ * name from the raw columns ("Margo  M." with two spaces) while recipient_label trims ("Margo M."),
+ * so the same person's note can carry either, and the live data has both.
  *
  * It cannot match for someone who has deleted their account (their name is gone from the lookup,
  * so `names` is empty); those copies are removed from the database by the deletion itself.
  */
 export function isNameEcho(note: string | null | undefined, names: readonly string[]): boolean {
-  const text = typeof note === "string" ? note.trim() : "";
-  return text !== "" && names.some((n) => text === `To ${n}`);
+  const squash = (s: string) => s.replace(/\s+/g, " ").trim();
+  const text = typeof note === "string" ? squash(note) : "";
+  return text !== "" && names.some((n) => text === `To ${squash(n)}`);
 }
 
 export function personName(first: string | null | undefined, last: string | null | undefined): string | null {
