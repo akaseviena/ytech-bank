@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ledgerPence, type Pence } from "@/lib/money";
 import { isSubscription } from "@/lib/ledger-label";
-import { DELETED_PERSON, personName } from "@/lib/person-name";
+import { DELETED_PERSON, isNameEcho, personLabel, personName } from "@/lib/person-name";
 import { appWrittenNote } from "@/lib/transfer-note";
 import { RECENT_TRANSFERS_SHOWN, TRANSFERS_FOR_TOTALS, type ContextField } from "@/lib/context-fields";
 import { RUNWAY_WINDOW_DAYS } from "@/lib/runway";
@@ -115,6 +115,8 @@ interface Counterparty {
   name: string;
   avatarUrl: string | null;
   kind: string; // accounts.kind
+  /** the forms of this person's name a note may repeat ("Anna Archer", "Anna A."); empty for a system account or someone who has left */
+  echoes: string[];
 }
 
 const SYSTEM_NAME: Record<string, string> = {
@@ -159,9 +161,15 @@ export async function resolveCounterparties(
       // leaves it), or a profile with empty names. The transfer stays in this person's history. Show
       // that: never "null null", never "Unknown", never a leftover picture.
       const name = p ? personName(p.first_name, p.last_name) : null;
-      out.set(a.id, { name: name ?? DELETED_PERSON, avatarUrl: name ? (p?.avatar_url ?? null) : null, kind: a.kind });
+      const short = p ? personLabel(p.first_name, p.last_name) : null;
+      out.set(a.id, {
+        name: name ?? DELETED_PERSON,
+        avatarUrl: name ? (p?.avatar_url ?? null) : null,
+        kind: a.kind,
+        echoes: [name, short].filter((n): n is string => !!n),
+      });
     } else {
-      out.set(a.id, { name: SYSTEM_NAME[a.kind] ?? "Y-tech", avatarUrl: null, kind: a.kind });
+      out.set(a.id, { name: SYSTEM_NAME[a.kind] ?? "Y-tech", avatarUrl: null, kind: a.kind, echoes: [] });
     }
   }
   return out;
@@ -179,7 +187,9 @@ export function toItems(rows: TransferRow[], myAccountId: string, names: Map<str
       id: r.id,
       direction: sent ? "sent" : "received",
       amountMinor: ledgerPence(r.amount_minor),
-      description: r.description,
+      // a note that only repeats the other side's name ("To Anna A.") is the heading again: left out,
+      // here, so the row's caption, its expanded note and the history search all agree
+      description: isNameEcho(r.description, other?.echoes ?? []) ? null : r.description,
       category: r.category,
       rail: r.rail,
       status: r.status,
