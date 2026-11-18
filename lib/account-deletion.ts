@@ -53,6 +53,10 @@ export async function deleteAccount(session: SupabaseClient, admin: SupabaseClie
       else return failure(500, "upstream_error", TRY_AGAIN);
     } else if (answer.ok !== true) {
       return failure(500, "upstream_error", TRY_AGAIN);
+    } else if ((answer as { code?: unknown }).code === "ALREADY_DELETED") {
+      // what the function really answers on a repeat (profile gone, sign-in still there):
+      // { ok: true, code: "ALREADY_DELETED", closed_minor: 0 }
+      alreadyErased = true;
     }
   } catch (err) {
     console.error("[account-deletion] the function threw:", err);
