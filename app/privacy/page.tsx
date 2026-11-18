@@ -7,19 +7,12 @@ import {
   fieldGroups,
 } from "@/lib/context-fields";
 import { contextLayout } from "@/lib/context-layout";
+import { ACCOUNT_DELETION_LIVE } from "@/lib/legal-flags";
 
 export const metadata = {
   title: "Privacy Policy — Y-tech",
   description: "How Y-tech collects, uses, and protects your personal data.",
 };
-
-// The "Deleting your account" section describes something the app cannot do yet: the database
-// function and the screen are being written. A policy must not promise a button that is not there,
-// so until the release that ships them the older sentence in "How long we keep it" stays and the
-// section is hidden. Flip this in that same release, after checking the section against what the
-// function really erases (conversations, savings goals, notifications, date of birth, usage
-// counters) and against the exact path to the screen.
-const ACCOUNT_DELETION_LIVE = false;
 
 export default function PrivacyPage() {
   const layout = contextLayout();
@@ -29,7 +22,7 @@ export default function PrivacyPage() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 80px" }}>
         <p style={{ fontSize: 13, color: "#9B9B9B", marginBottom: 8 }}>
-          Last updated: 17 November 2026
+          Last updated: 18 November 2026
         </p>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1A1A1A", marginBottom: 8, lineHeight: 1.2 }}>
           Privacy Policy — Y-tech prototype
@@ -72,6 +65,10 @@ export default function PrivacyPage() {
             of other Y-tech users you send demonstration transfers to.
           </p>
           <p>
+            <strong>If you take the identity step in the app:</strong> the kind of document you
+            choose, for example a passport. We do not store a picture of the document or a selfie.
+          </p>
+          <p>
             <strong>When you use the AI:</strong> the questions you ask the assistant and the
             NeuroOffice specialists, and the transaction context sent with them — see the next
             section.
@@ -102,6 +99,12 @@ export default function PrivacyPage() {
             This is the part most people want to understand, so we set it out plainly.
           </p>
           <p>
+            <strong>In short,</strong> three things go to Anthropic: what you type, the recent part of
+            your conversation with that assistant, and the account figures listed below for the
+            assistant you ask. We never send {NEVER_SENT.slice(0, -1).join(", ")}, or{" "}
+            {NEVER_SENT[NEVER_SENT.length - 1]}.
+          </p>
+          <p>
             When you ask the assistant or a specialist a question, we send that question to
             Anthropic, together with a small part of your Y-tech data. How much depends on who
             you ask, and it is the same in the web app and in the mobile app:
@@ -116,8 +119,7 @@ export default function PrivacyPage() {
             ))}
           </ul>
           <p>
-            All amounts are demonstration funds. We never send {NEVER_SENT.slice(0, -1).join(", ")}, or{" "}
-            {NEVER_SENT[NEVER_SENT.length - 1]}. {NOTES_SENT}
+            All amounts are demonstration funds. {NOTES_SENT}
           </p>
           <p>
             What you type to the assistant or a specialist is sent as you write it, together with
@@ -187,8 +189,15 @@ export default function PrivacyPage() {
           <Section id="deleting-your-account" title="Deleting your account">
             <p>
               You can delete your account yourself in the Y-tech app, under Settings → Delete
-              account. It takes effect at once and cannot be undone. It removes your sign-in and your profile: your name, email address,
-              phone number, account number and picture.
+              account. You confirm with your PIN and do not have to contact us. It takes effect at
+              once and cannot be undone.
+            </p>
+            <p>
+              <strong>What is deleted.</strong> Your profile and everything attached to it: your
+              name, email address, phone number, date of birth and account number, your
+              conversations with the assistant and the specialists, your savings goals, cards and
+              notifications, the record of the document kind you chose and your demo top-ups. Your profile
+              picture and your sign-in are deleted too.
             </p>
             <p>
               Your plan ends immediately. Your demo funds are closed. There is no refund and there
@@ -196,13 +205,27 @@ export default function PrivacyPage() {
               nothing to cancel there.
             </p>
             <p>
-              Transfers you made or received are kept, because each is also part of the other
-              person&apos;s record of what they sent and received. On their side your name is
-              replaced by &quot;Deleted user&quot; and your picture is not shown.
+              <strong>What stays.</strong> A transfer cannot be changed once it has been made, so
+              the transfers you made or received stay in the books, because each is also part of
+              the other person&apos;s record. On their side your name is replaced by
+              &quot;Deleted user&quot;, and the automatic &quot;To &lt;your name&gt;&quot; note the
+              app adds to a transfer is removed. A note you typed yourself stays with the
+              transfer. Your account stays as a closed account that belongs to nobody. We also keep
+              a record that an account was closed: when it was requested and finished, the plan
+              it was on and the amount closed. While the deletion is carried out the record holds
+              an internal number that identifies your account, so that an interrupted deletion
+              can be completed; removing that number is the last step of the deletion. If that
+              step fails, the number stays in the record.
             </p>
             <p>
-              If you use only the web app, email us and we will delete your account in the same way
-              within one month.
+              Deleting your account does not recall what has already left Y-tech: technical logs
+              and anything Anthropic has already processed are deleted on the schedules described
+              above.
+            </p>
+            <p>
+              Deleting it in the app is the way to do it, and if you have removed the app you can
+              install it again and sign in. If you do not use the app at all, email us and we will
+              delete your account for you within one month.
             </p>
           </Section>
         )}

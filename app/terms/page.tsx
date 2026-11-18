@@ -1,4 +1,5 @@
 import { LegalHeader, LegalFooter, Section } from "@/components/legal/LegalPage";
+import { ACCOUNT_DELETION_LIVE } from "@/lib/legal-flags";
 
 export const metadata = {
   title: "Terms of Use — Y-tech",
@@ -101,13 +102,28 @@ export default function TermsPage() {
         </Section>
 
         <Section id="ending-it" title="Ending it">
-          <p>
-            You can close your account at any time by emailing{" "}
-            <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
-              info@ytechfinance.com
-            </a>
-            . We may end your access to the prototype at any time.
-          </p>
+          {ACCOUNT_DELETION_LIVE ? (
+            <p>
+              You can close your account at any time in the Y-tech app, under Settings → Delete
+              account. Closing it deletes it: our{" "}
+              <a href="/privacy#deleting-your-account" style={{ color: "#F5C800" }}>
+                Privacy Policy
+              </a>{" "}
+              says what that removes and what stays. If you do not use the app, email{" "}
+              <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
+                info@ytechfinance.com
+              </a>
+              . We may end your access to the prototype at any time.
+            </p>
+          ) : (
+            <p>
+              You can close your account at any time by emailing{" "}
+              <a href="mailto:info@ytechfinance.com" style={{ color: "#F5C800" }}>
+                info@ytechfinance.com
+              </a>
+              . We may end your access to the prototype at any time.
+            </p>
+          )}
         </Section>
 
         <Section id="governing-law" title="Governing law">
