@@ -31,6 +31,8 @@ const REFUSAL_TEXT: Record<string, string> = {
   CURRENCY_MISMATCH: "These accounts use different currencies",
   FORBIDDEN: "This transfer is not permitted",
   NO_SUCH_ACCOUNT: "This transfer is not permitted",
+  // the recipient's person has deleted their account: the same words, so the sender is not told
+  ACCOUNT_CLOSED: "This transfer is not permitted",
 };
 
 /** "Anna A." -> "AA" */

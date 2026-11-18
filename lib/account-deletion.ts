@@ -4,15 +4,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // side; this file only decides the ORDER and what to do with each answer.
 //
 //   1. the database function, called with the person's own session (so auth.uid() inside it is the
-//      person who asked, and nobody can be named in the call). It erases or anonymises the data.
+//      person who asked, and nobody can be named in the call). It cuts the accounts loose from the
+//      person, deletes the profile (the rest follows by cascade) and records the request in
+//      account_deletions.
 //   2. only if it succeeded: the person's picture in storage, which SQL cannot remove.
 //   3. only after both: the sign-in itself, with the service-role key.
+//   4. the request is marked done: auth_deleted_at set and user_id cleared, so the table no longer
+//      holds the id of someone who is gone. With the service role: there is no session by now.
 //
 // The order is the point. If the database fails after the sign-in is gone, what is left is data
 // nobody owns and nobody can log in to change. The other way round, a failure leaves a person who
 // can still sign in and ask again, so every step must be safe to repeat: the function answers
 // ALREADY_DELETED (or ok) the second time, listing and removing a picture twice is harmless, and
-// an already-removed sign-in counts as done.
+// an already-removed sign-in counts as done. A failed sign-in removal is retried by the person's
+// next request; there is no background sweep. What is unfinished is visible with
+//   select * from account_deletions where auth_deleted_at is null;
 
 /** The database function. Takes no arguments: the session says who. */
 export const DELETE_ACCOUNT_RPC = "delete_my_account";
@@ -79,6 +85,20 @@ export async function deleteAccount(session: SupabaseClient, admin: SupabaseClie
   } catch (err) {
     console.error("[account-deletion] removing the sign-in threw:", err);
     return failure(500, "auth_delete_failed", TRY_AGAIN);
+  }
+
+  // 4. Mark it done. The person is already gone, so a failure here must not be reported as a
+  //    failed deletion (nobody could repeat it); it is logged, and the row stays visible in the
+  //    unfinished list for whoever looks.
+  try {
+    const { error } = await admin
+      .from("account_deletions")
+      .update({ auth_deleted_at: new Date().toISOString(), user_id: null })
+      .eq("user_id", userId)
+      .is("auth_deleted_at", null);
+    if (error) console.error("[account-deletion] marking the request done failed:", error.message);
+  } catch (err) {
+    console.error("[account-deletion] marking the request done threw:", err);
   }
 
   return { ok: true, alreadyErased };

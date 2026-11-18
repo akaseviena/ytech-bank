@@ -23,8 +23,11 @@ const REFUSAL_TEXT: Record<string, string> = {
   SAME_ACCOUNT: "You cannot transfer to your own account.",
   CURRENCY_MISMATCH: "The accounts use different currencies.",
 };
-// RPC error codes that map to 403 (identical message for both to avoid account enumeration)
-const FORBIDDEN_CODES = new Set(["FORBIDDEN", "NO_SUCH_ACCOUNT"]);
+// RPC error codes that map to 403 (identical message for all three to avoid account enumeration).
+// ACCOUNT_CLOSED is the recipient's account being closed because its person deleted their account.
+// It must read exactly like the other two: a message of its own would tell the sender something
+// about another person, that they have left.
+const FORBIDDEN_CODES = new Set(["FORBIDDEN", "NO_SUCH_ACCOUNT", "ACCOUNT_CLOSED"]);
 
 export async function POST(request: Request) {
   const user = await requireUser(request);

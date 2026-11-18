@@ -29,6 +29,10 @@ import type { Plan } from "@/types";
  * NO_ACCOUNT, where this code first guessed INVALID_PLAN, ALREADY_ON_PLAN and NO_SUCH_ACCOUNT (which
  * is now a different code, from the posting function).
  *
+ * ACCOUNT_CLOSED (thirteenth) is another value of the posting function's `code`: money does not go to
+ * an account whose person has deleted their account. A plan charge goes to bank_fees, so it is not
+ * reachable from here; it is declared so that, like the four above, it is a fault if it ever comes.
+ *
  * The twelfth is CARD_FROZEN. The plan change first went past the door that checks a frozen card (a
  * defect, now fixed); the rule is now in the working function and says that money does not leave
  * an account whose owner has a frozen card. A top-up and the welcome bonus are exempt by
@@ -46,7 +50,8 @@ export type PlanRefusal =
   | "SAME_ACCOUNT"
   | "NO_SUCH_ACCOUNT"
   | "CURRENCY_MISMATCH"
-  | "CARD_FROZEN";
+  | "CARD_FROZEN"
+  | "ACCOUNT_CLOSED";
 
 export type PlanChange =
   | { ok: true; replayed: boolean; plan: Plan; balanceMinor: number; chargedMinor: number }
@@ -72,6 +77,7 @@ export const PLAN_REFUSALS: Record<PlanRefusal, { status: number; message: strin
   SAME_ACCOUNT: { status: 500, message: NOT_THE_PERSONS_FAULT, webMessage: "Failed to update plan" },
   NO_SUCH_ACCOUNT: { status: 500, message: NOT_THE_PERSONS_FAULT, webMessage: "Failed to update plan" },
   CURRENCY_MISMATCH: { status: 500, message: NOT_THE_PERSONS_FAULT, webMessage: "Failed to update plan" },
+  ACCOUNT_CLOSED: { status: 500, message: NOT_THE_PERSONS_FAULT, webMessage: "Failed to update plan" },
 };
 
 const toPence = (value: unknown): number => {

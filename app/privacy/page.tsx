@@ -177,7 +177,7 @@ export default function PrivacyPage() {
           <p>
             Your account data is kept while your account is open.{" "}
             {!ACCOUNT_DELETION_LIVE &&
-              "If you ask us to delete your account, we delete it and its transactions within 30 days. "}
+              "You can ask us to delete your account by emailing info@ytechfinance.com. We remove your sign-in, your name, email address, phone number and picture within one month. Transfers you have made stay in the other person's history, shown as \"Deleted user\", because they are part of that person's record too. "}
             Technical logs are kept for up to 30 days. Prototype data may also be reset in full as
             the product develops — we will tell you before we do that.
           </p>
@@ -187,8 +187,8 @@ export default function PrivacyPage() {
           <Section id="deleting-your-account" title="Deleting your account">
             <p>
               You can delete your account yourself in the Y-tech app. It takes effect at once and
-              cannot be undone. It removes your sign-in and clears your name, email address, phone
-              number, account number and profile picture.
+              cannot be undone. It removes your sign-in and your profile: your name, email address,
+              phone number, account number and picture.
             </p>
             <p>
               Your plan ends immediately. Your demo funds are closed. There is no refund and there

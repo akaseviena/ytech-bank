@@ -155,8 +155,9 @@ export async function resolveCounterparties(
   for (const a of accounts) {
     if (a.kind === "main") {
       const p = a.owner_id ? people.get(a.owner_id) : undefined;
-      // Someone who deleted their account: the profile is emptied (names null) or gone, the transfer
-      // stays in this person's history. Show that, never "null null" and never a leftover picture.
+      // Someone who deleted their account: no owner and no profile row (that is how the deletion
+      // leaves it), or a profile with empty names. The transfer stays in this person's history. Show
+      // that: never "null null", never "Unknown", never a leftover picture.
       const name = p ? personName(p.first_name, p.last_name) : null;
       out.set(a.id, { name: name ?? DELETED_PERSON, avatarUrl: name ? (p?.avatar_url ?? null) : null, kind: a.kind });
     } else {
