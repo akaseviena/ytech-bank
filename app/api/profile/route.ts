@@ -22,8 +22,8 @@ export async function GET() {
 }
 
 const schema = z.object({
-  first_name: z.string().min(1),
-  last_name: z.string().min(1),
+  first_name: z.string().trim().min(1),
+  last_name: z.string().trim().min(1),
   phone: z.string().nullable().optional(),
   date_of_birth: z.string().nullable().optional(),
 });

@@ -130,8 +130,10 @@ export default function PrivacyPage() {
           <p>
             Anthropic processes this to generate the answer and returns it to us. Under our
             commercial agreement with Anthropic, this data is not used to train their models.
-            Anthropic retains inputs and outputs for a limited period for operational and safety
-            purposes and then deletes them.
+            By default Anthropic deletes inputs and outputs within 30 days of receiving them. If
+            its automated safety systems flag a request as breaking its usage policy, it may keep
+            that input and output for up to two years, and the safety classification scores for up
+            to seven.
           </p>
           <p>
             Our legal basis for this is your consent. You give it when you first use the AI

@@ -16,8 +16,8 @@ import { getInitials, formatDate } from "@/lib/utils";
 import { PLAN_INFO, type Profile } from "@/types";
 
 const schema = z.object({
-  first_name: z.string().min(1, "Required"),
-  last_name: z.string().min(1, "Required"),
+  first_name: z.string().trim().min(1, "Required"),
+  last_name: z.string().trim().min(1, "Required"),
   phone: z.string().optional(),
   date_of_birth: z.string().optional(),
 });

@@ -43,8 +43,8 @@ const MIN_DOB = toInputDate(_minDobDate);
 const MAX_DOB_FORMATTED = `${String(_maxDobDate.getDate()).padStart(2, "0")}.${String(_maxDobDate.getMonth() + 1).padStart(2, "0")}.${_maxDobDate.getFullYear()}`;
 
 const step2Schema = z.object({
-  firstName: z.string().min(1, "Required"),
-  lastName: z.string().min(1, "Required"),
+  firstName: z.string().trim().min(1, "Required"),
+  lastName: z.string().trim().min(1, "Required"),
   dateOfBirth: z
     .string()
     .min(1, "Date of birth is required")

@@ -5,8 +5,10 @@ import { z } from "zod";
 const schema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
+  // trimmed before it is checked and before it is stored: a name of only spaces is not a name,
+  // and the recipient list leaves such a person out
+  firstName: z.string().trim().min(1),
+  lastName: z.string().trim().min(1),
   dateOfBirth: z.string().optional(),
   plan: z.enum(["basic", "standard", "travel", "metal", "ultimate", "business"]).default("basic"),
 });
