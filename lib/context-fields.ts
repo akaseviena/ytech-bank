@@ -71,6 +71,9 @@ export const NEVER_SENT: readonly string[] = [
   "your email address, phone number or date of birth",
   "your card details",
   "the names or account details of the people you pay or who pay you",
+  // added when the goal name was taken out of the context: free text a person types is not sent,
+  // and the consent screen says so
+  "the names of your savings goals",
 ];
 
 /**
