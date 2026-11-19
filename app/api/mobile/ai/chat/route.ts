@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AI_MODEL } from "@/lib/ai-model";
 import { z } from "zod";
 import { requireUser, admin } from "@/lib/mobile/auth";
 import { getDailyUsage, recordDailyUse, secondsUntilReset } from "@/lib/mobile/daily-usage";
@@ -191,7 +192,7 @@ export async function POST(request: Request) {
           budgetMs: budgetMsFor(maxDuration),
           open: () =>
             anthropic.messages.stream({
-              model: "claude-sonnet-5",
+              model: AI_MODEL,
               max_tokens: 8192,
               thinking: { type: "adaptive" },
               output_config: { effort: "medium" },

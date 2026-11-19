@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AI_MODEL } from "@/lib/ai-model";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan } from "@/types";
@@ -202,10 +203,10 @@ export async function POST(request: NextRequest) {
       AGENT_HISTORY_WINDOW,
     );
 
-    console.log("[neurooffice] Calling Anthropic API, model: claude-sonnet-5, history:", history.length, "max_tokens:", MAX_TOKENS[agentType]);
+    console.log("[neurooffice] Calling Anthropic API, model:", AI_MODEL, "history:", history.length, "max_tokens:", MAX_TOKENS[agentType]);
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-5",
+      model: AI_MODEL,
       // Sonnet 5 thinks by default when `thinking` is left out, and the thinking would be paid for as
       // output and counted against max_tokens (1000-2000 here). The web has never thought; keep it so.
       thinking: { type: "disabled" },

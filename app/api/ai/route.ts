@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AI_MODEL } from "@/lib/ai-model";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { windowHistory, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
   );
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-5",
+    model: AI_MODEL,
     // Sonnet 5 thinks by default when `thinking` is left out, and the thinking would be paid for as
     // output and counted against max_tokens (1000-2000 here). The web has never thought; keep it so.
     thinking: { type: "disabled" },
