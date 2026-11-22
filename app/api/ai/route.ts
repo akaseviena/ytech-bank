@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     message: string;
     /** the conversation this message belongs to; without it nothing is saved (and the history is the browser's) */
     conversationId?: string;
-    conversationHistory?: { role: "user" | "assistant"; content: string }[];
+    conversationHistory?: { role: "user" | "assistant"; content: string; timestamp?: string }[];
   };
 
   // The conversation is shared with the app (same table, same row), so it is saved here, by the
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   // longer, the window slides every turn and the history is re-sent at full price — bounded,
   // but no longer cached.
   const history: Anthropic.Messages.MessageParam[] = windowHistory(
-    (stored ?? conversationHistory ?? []).map((h) => ({ role: h.role, content: h.content })),
+    (stored ?? conversationHistory ?? []).map((h) => ({ role: h.role, content: h.content, at: h.timestamp })),
     ASSISTANT_HISTORY_WINDOW,
   );
 

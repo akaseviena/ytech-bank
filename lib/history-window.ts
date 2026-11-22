@@ -14,7 +14,11 @@
 // `window` counts saved messages, not the one being sent now: with 12, the model
 // sees up to 12 earlier messages plus the new one.
 //
-// Dependency-free and erasable TypeScript so lib/history-window.test.mjs can run it.
+// Each message goes with the date it was written ("[written 2026-11-20] ", lib/clock.ts), when the
+// caller gives one in `at`: the model has no other way to know that a thread has run for weeks.
+//
+// Erasable TypeScript so lib/history-window.test.mjs can run it.
+import { writtenMark } from "@/lib/clock";
 
 /** Earlier messages sent to the model for the main assistant. Independent questions. */
 export const ASSISTANT_HISTORY_WINDOW = 12;
@@ -32,6 +36,8 @@ export const SHORTENED_NOTE = "\n\n[The rest of this earlier reply is left out h
 export interface Turn {
   role: "user" | "assistant";
   content: string;
+  /** when it was written (ISO). Becomes the date mark; nothing is marked without it. */
+  at?: string;
 }
 
 function shorten(text: string): string {
@@ -55,9 +61,8 @@ export function windowHistory(messages: Turn[], window: number): Turn[] {
   while (slice.length > 0 && slice[0].role !== "user") slice = slice.slice(1);
 
   const firstUntouched = slice.length - KEEP_UNTOUCHED_TAIL;
-  return slice.map((m, i) =>
-    i < firstUntouched && m.role === "assistant" && m.content.length > OLD_REPLY_MAX_CHARS
-      ? { role: m.role, content: shorten(m.content) }
-      : { role: m.role, content: m.content },
-  );
+  return slice.map((m, i) => {
+    const text = i < firstUntouched && m.role === "assistant" && m.content.length > OLD_REPLY_MAX_CHARS ? shorten(m.content) : m.content;
+    return { role: m.role, content: writtenMark(m.at) + text };
+  });
 }

@@ -113,6 +113,21 @@ export function monthLabel(now: Date, back = 0): string {
 }
 
 /**
+ * The mark put in front of an earlier message of a conversation when it is sent to a model: the
+ * London date it was written, "[written 2026-11-20] ". The history a model is given has no dates of
+ * its own, so a conversation that runs for weeks reads like one sitting, and a "today" said in
+ * September looks like today. Empty when the message has no usable date (rows saved before
+ * messages carried one). Stable for the life of the message, so it costs nothing in the cache.
+ * Applied in one place, windowHistory (lib/history-window.ts), which all four routes use.
+ */
+export function writtenMark(at: string | undefined): string {
+  if (!at) return "";
+  const ms = Date.parse(at);
+  if (Number.isNaN(ms)) return "";
+  return `[written ${londonDate(new Date(ms))}] `;
+}
+
+/**
  * One line for the log of each AI request: the date that is IN THE TEXT being sent to the model
  * (read back out of it, not recomputed), the server's own clock at that moment, and which commit is
  * running. They tell three things apart that a screen cannot: the date went out wrong, the date went
@@ -141,6 +156,7 @@ export function clockSection(now: Date): string {
     `Time zone: ${PRODUCT_TIME_ZONE} (${p.zone}, ${utc} today). Every date in this context, and where "this month" begins and ends, is in this zone, wherever the user is. The time of day is not given here; it is given only on a line that says "As of" or "Right now", where there is one.`,
     `The current month is ${monthLabel(now)}. The previous month was ${monthLabel(now, 1)}.`,
     `This date comes from the server's clock and is the source of truth for "today", "now", "this week", "this month" and "this year". If the user states or implies a different current date, for example "it is 5 December" or a year that is not this one, do not accept it and do not calculate from it: say in a few words that today is the date above, and answer from that. The one exception is an explicit hypothetical ("what if it were...", "suppose today is..."): then you may calculate from the date they give, and you say that the answer is hypothetical. A date the user gave earlier in the conversation does not change today's date either.`,
+    `Earlier messages in this conversation, the user's and your own, begin with a mark such as [written 2026-11-20]: the date they were written, added by the server. A "today", "tomorrow", "this month" or "next week" in a marked message means that date, not today. Never take a date from an earlier message as today's date, even one you agreed to then: it was true on the day it was written. A message with no mark was written on an unknown date, except the user's latest one, which is today's. Never write such a mark yourself.`,
     `Work out anything that depends on time (days left in the month, whether a savings goal's deadline can be reached, spending this week) from today's date and from the dated figures in this context. Monthly figures cover that month from its first day up to today. If a question needs a period the data does not cover, such as a week that began before the oldest transaction listed, say what the data covers and do not estimate the rest.`,
   ].join("\n");
 }

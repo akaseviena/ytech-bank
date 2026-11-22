@@ -124,8 +124,8 @@ export default function PrivacyPage() {
           <p>
             What you type to the assistant or a specialist is sent as you write it, together with
             the most recent part of the conversation so far (the last {layout.conversationWindow.assistant}{" "}
-            messages with the assistant, the last {layout.conversationWindow.specialist} with a specialist). Do
-            not type anything you would not want Anthropic to process.
+            messages with the assistant, the last {layout.conversationWindow.specialist} with a specialist).{" "}
+            {layout.conversationDates} Do not type anything you would not want Anthropic to process.
           </p>
           <p>
             Anthropic processes this to generate the answer and returns it to us. Under our

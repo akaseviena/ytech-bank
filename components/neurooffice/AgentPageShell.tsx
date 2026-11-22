@@ -10,7 +10,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useDailyUsage, DAILY_LIMIT } from "@/contexts/DailyUsageContext";
 import type { AgentType } from "@/types";
 
-type Message = { role: "user" | "assistant"; content: string };
+// `timestamp` is when it was written: it goes to the model as a date mark (lib/clock.ts). Rows saved
+// before messages carried one have none, and are sent unmarked.
+type Message = { role: "user" | "assistant"; content: string; timestamp?: string };
 
 interface AgentPageShellProps {
   agentType: AgentType;
@@ -137,9 +139,10 @@ export default function AgentPageShell({
           .maybeSingle();
 
         if (data?.messages && Array.isArray(data.messages) && (data.messages as unknown[]).length > 0) {
-          const loaded = (data.messages as { role: string; content: string }[]).map((m) => ({
+          const loaded = (data.messages as { role: string; content: string; timestamp?: string }[]).map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
+            ...(m.timestamp ? { timestamp: m.timestamp } : {}),
           }));
           setMessages(loaded);
         }
@@ -197,12 +200,12 @@ export default function AgentPageShell({
 
     setLoading(true);
     setError("");
-    const userMsg: Message = { role: "user", content: displayText };
+    const userMsg: Message = { role: "user", content: displayText, timestamp: new Date().toISOString() };
     setMessages([userMsg]);
 
     try {
       const result = await sendToApi(payload, []);
-      const assistantMsg: Message = { role: "assistant", content: result };
+      const assistantMsg: Message = { role: "assistant", content: result, timestamp: new Date().toISOString() };
       const newMessages = [userMsg, assistantMsg];
       setMessages(newMessages);
       await persist(newMessages);
@@ -225,14 +228,14 @@ export default function AgentPageShell({
     setError("");
 
     const history = messages;
-    const userMsg: Message = { role: "user", content: text };
+    const userMsg: Message = { role: "user", content: text, timestamp: new Date().toISOString() };
     const messagesWithUser = [...history, userMsg];
     setMessages(messagesWithUser);
     setLoading(true);
 
     try {
       const result = await sendToApi({ input: text }, history);
-      const finalMessages: Message[] = [...messagesWithUser, { role: "assistant" as const, content: result }];
+      const finalMessages: Message[] = [...messagesWithUser, { role: "assistant" as const, content: result, timestamp: new Date().toISOString() }];
       setMessages(finalMessages);
       await persist(finalMessages);
     } catch (err) {

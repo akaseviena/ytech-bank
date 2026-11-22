@@ -84,6 +84,14 @@ export const NEVER_SENT: readonly string[] = [
 ];
 
 /**
+ * Said on the consent screen beside the conversation window: each earlier message of the conversation
+ * goes to the model with the date it was written (lib/clock.ts, writtenMark; applied by windowHistory).
+ * It is about the conversation, not about one agent's figures, so it is a sentence of its own like
+ * NOTES_SENT and HISTORY_INCOMPLETE, in the layout as conversationDates, the same for all nine.
+ */
+export const CONVERSATION_DATES = "Each earlier message of the conversation that is sent is sent with the date it was written.";
+
+/**
  * The one exception to "notes are not sent": see lib/transfer-note.ts.
  *
  * This is true because demo top-ups and the welcome bonus are on the promo rail, which no context

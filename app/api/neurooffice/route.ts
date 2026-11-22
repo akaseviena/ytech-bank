@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       tab?: string;
       additionalInput?: string;
       tone?: string;
-      conversationHistory?: { role: "user" | "assistant"; content: string }[];
+      conversationHistory?: { role: "user" | "assistant"; content: string; timestamp?: string }[];
     };
     try {
       body = await request.json();
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
     // reading the older part; past it the window slides each turn and the history
     // is re-sent at full price.
     const history = windowHistory(
-      (conversationHistory ?? []).map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+      (conversationHistory ?? []).map((m) => ({ role: m.role as "user" | "assistant", content: m.content, at: m.timestamp })),
       AGENT_HISTORY_WINDOW,
     );
 

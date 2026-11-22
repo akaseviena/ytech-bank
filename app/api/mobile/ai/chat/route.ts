@@ -108,7 +108,7 @@ export async function POST(request: Request) {
   // What the model is sent is a window of the saved conversation (lib/history-window.ts);
   // the database keeps the whole conversation.
   const history = windowHistory(
-    storedMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    storedMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content, at: m.timestamp })),
     ASSISTANT_HISTORY_WINDOW,
   );
 

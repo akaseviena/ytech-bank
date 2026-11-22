@@ -170,7 +170,7 @@ export default function AIAssistantPage() {
     if (!text.trim() || loading || limitReached) return;
 
     const userMsg: Message = { role: "user", content: text, timestamp: new Date().toISOString() };
-    const conversationHistory = messages.map((m) => ({ role: m.role, content: m.content }));
+    const conversationHistory = messages.map((m) => ({ role: m.role, content: m.content, timestamp: m.timestamp }));
     const newMessages = [...messages, userMsg];
 
     setMessages(newMessages);

@@ -160,7 +160,7 @@ export async function POST(request: Request) {
   // wider than the main assistant's because the person revises a document with the agent
   // round after round. The database keeps the whole conversation.
   const history = windowHistory(
-    storedMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    storedMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content, at: m.timestamp })),
     AGENT_HISTORY_WINDOW,
   );
 
