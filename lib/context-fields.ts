@@ -105,6 +105,19 @@ export const NOTES_SENT =
  */
 export const HISTORY_INCOMPLETE = "The balance includes demo top-ups. They do not appear in anything below.";
 
+/**
+ * Said right under the totals worked out from the last TRANSFERS_FOR_TOTALS transfers (the
+ * accountant's), in both builders. The window is a count, not a calendar period, and the model is
+ * given no dates for it: left alone it retells "£247 on subscriptions" as "this month", and the person
+ * reads a month where there may be four. Not a field and not in the layout: it adds no data, and the
+ * consent text has nothing to say about it.
+ *
+ * Deferred past the beta, with its reason: the right fix is totals over a NAMED period, because
+ * nobody counts money in transactions, they count it in months and quarters. A count of events is a
+ * technical window, not a financial one.
+ */
+export const TOTALS_WINDOW_RULE = `These totals cover the last ${TRANSFERS_FOR_TOTALS} transfers, not a calendar period. Never call them "this month", "recently" or any other period: say they are over the last ${TRANSFERS_FOR_TOTALS} transfers. If asked about a period they do not cover, say the data does not cover it; do not estimate.`;
+
 /** Fields worked out from transfers, and so affected by what the transfers leave out. */
 export const TRANSFER_DERIVED_FIELDS: readonly ContextField[] = [
   "month_spent",

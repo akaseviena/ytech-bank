@@ -7,6 +7,7 @@ import { clockSection, londonDate, monthLabel } from "@/lib/clock";
 import {
   HISTORY_INCOMPLETE,
   RECENT_TRANSFERS_SHOWN,
+  TOTALS_WINDOW_RULE,
   TRANSFERS_FOR_TOTALS,
   derivesFromTransfers,
   fieldSet,
@@ -85,6 +86,7 @@ export async function buildWebContext(
       out.push(
         "",
         `TOTALS (last ${TRANSFERS_FOR_TOTALS} transfers):`,
+        TOTALS_WINDOW_RULE,
         `Income: ${formatPence(last.received)}`,
         `Expenses: ${formatPence(last.sent)}`,
         `Net: ${formatPence(last.received - last.sent)}`,
