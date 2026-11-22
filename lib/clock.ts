@@ -112,6 +112,43 @@ export function monthLabel(now: Date, back = 0): string {
   return `${MONTHS[m]} ${y}`;
 }
 
+const dayNumber = (isoDate: string) => Date.UTC(Number(isoDate.slice(0, 4)), Number(isoDate.slice(5, 7)) - 1, Number(isoDate.slice(8, 10))) / 86_400_000;
+
+/**
+ * The heading a chat shows above the first message of a day: "Today", "Yesterday", or
+ * "Friday 20 November 2026". The day is LONDON'S, like every other date in the product: the same
+ * message is "[written 2026-11-20]" to the assistant, and a heading in the browser's own zone would
+ * contradict it for anyone near midnight or abroad. null when the message has no usable date.
+ */
+export function dayLabel(at: string | undefined, now: Date = new Date()): string | null {
+  if (!at) return null;
+  const ms = Date.parse(at);
+  if (Number.isNaN(ms)) return null;
+  const day = londonDate(new Date(ms));
+  const gap = dayNumber(londonDate(now)) - dayNumber(day);
+  if (gap === 0) return "Today";
+  if (gap === 1) return "Yesterday";
+  const p = parts(new Date(ms));
+  return `${p.weekday} ${p.day} ${MONTHS[p.month - 1]} ${p.year}`;
+}
+
+/**
+ * For each message of a conversation, the heading to show above it, or null. A heading appears where
+ * the London day changes from the last message that had a date; a message with no date (saved before
+ * messages carried one) shows none and does not break the run.
+ */
+export function dayBreaks(messages: readonly { timestamp?: string }[], now: Date = new Date()): (string | null)[] {
+  let last: string | null = null;
+  return messages.map((m) => {
+    const label = dayLabel(m.timestamp, now);
+    if (label === null) return null;
+    const day = londonDate(m.timestamp as string);
+    if (day === last) return null;
+    last = day;
+    return label;
+  });
+}
+
 /**
  * The mark put in front of an earlier message of a conversation when it is sent to a model: the
  * London date it was written, "[written 2026-11-20] ". The history a model is given has no dates of

@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Sparkles, Plus, X, Clock } from "lucide-react";
+import { Send, Sparkles, Plus, Trash2, X, Clock } from "lucide-react";
 import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
+import { deleteConversation, openLatestConversation, startConversation } from "@/lib/web-conversation";
+import { dayBreaks } from "@/lib/clock";
 import { createClient } from "@/lib/supabase/client";
 import { useDailyUsage, DAILY_LIMIT } from "@/contexts/DailyUsageContext";
 
@@ -114,7 +116,8 @@ export default function AIAssistantPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -134,27 +137,12 @@ export default function AIAssistantPage() {
         if (!user) return;
         userIdRef.current = user.id;
 
-        const storageKey = `ai_conv_${user.id}`;
-        let id = localStorage.getItem(storageKey);
-
-        if (id) {
-          const { data } = await supabase.current
-            .from("ai_conversations")
-            .select("messages")
-            .eq("id", id)
-            .eq("user_id", user.id)
-            .maybeSingle();
-
-          if (data?.messages && (data.messages as Message[]).length > 0) {
-            setMessages(data.messages as Message[]);
-          } else if (!data) {
-            id = crypto.randomUUID();
-            localStorage.setItem(storageKey, id);
-          }
-        } else {
-          id = crypto.randomUUID();
-          localStorage.setItem(storageKey, id);
-        }
+        // the most recently updated conversation, wherever it was written (lib/web-conversation.ts); the
+        // id this browser used to remember decided nothing useful and is forgotten
+        try { localStorage.removeItem(`ai_conv_${user.id}`); } catch { /* not available */ }
+        const opened = await openLatestConversation(supabase.current, user.id);
+        if (opened.messages.length > 0) setMessages(opened.messages as Message[]);
+        const id = opened.id;
 
         convIdRef.current = id;
       } catch {
@@ -210,25 +198,38 @@ export default function AIAssistantPage() {
     }
   }
 
-  async function handleClear() {
-    if (userIdRef.current && convIdRef.current) {
-      try {
-        await supabase.current
-          .from("ai_conversations")
-          .delete()
-          .eq("id", convIdRef.current)
-          .eq("user_id", userIdRef.current);
-      } catch { /* ignore */ }
-      const newId = crypto.randomUUID();
-      localStorage.setItem(`ai_conv_${userIdRef.current}`, newId);
-      convIdRef.current = newId;
-    }
+  // "New" is one more conversation: the one on screen stays where it is, saved
+  async function handleNew() {
+    if (userIdRef.current) convIdRef.current = await startConversation(supabase.current, userIdRef.current);
     setMessages([]);
     setInput("");
-    setShowClearConfirm(false);
+  }
+
+  function closeDelete() {
+    setShowDeleteConfirm(false);
+    setDeleteError("");
+  }
+
+  // "Delete this conversation": its own button and its own confirmation. Not part of "New".
+  // When it is gone the person lands on their newest remaining conversation, as on a reload.
+  async function handleDelete() {
+    if (!userIdRef.current || !convIdRef.current) return closeDelete();
+    const gone = await deleteConversation(supabase.current, userIdRef.current, convIdRef.current);
+    if (!gone) {
+      // not deleted, and the screen must not say it was
+      setDeleteError("Could not delete this conversation. Please try again.");
+      return;
+    }
+    const next = await openLatestConversation(supabase.current, userIdRef.current);
+    convIdRef.current = next.id;
+    setMessages(next.messages as Message[]);
+    setInput("");
+    closeDelete();
   }
 
   const inputDisabled = loading || historyLoading || limitReached;
+  // a heading above the first message of each London day, like the dates the assistant is told
+  const breaks = dayBreaks(messages);
 
   return (
     <PageTransition>
@@ -246,13 +247,30 @@ export default function AIAssistantPage() {
             <p className="text-xs text-[#6B6B6B]">Powered by Claude · Your personal finance advisor</p>
           </div>
           <AnimatePresence>
-            {!historyLoading && messages.length > 0 && !limitReached && (
+            {!historyLoading && messages.length > 0 && (
               <motion.button
+                key="delete"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => setShowClearConfirm(true)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={loading}
+                title="Delete this conversation"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#D32F2F] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(211,47,47,0.3)] hover:bg-[rgba(211,47,47,0.04)] flex-shrink-0 disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </motion.button>
+            )}
+            {!historyLoading && messages.length > 0 && !limitReached && (
+              <motion.button
+                key="new"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={handleNew}
+                disabled={loading}
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
                 New
@@ -298,8 +316,9 @@ export default function AIAssistantPage() {
                     initial={{ opacity: 0, y: 10, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.3 }}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
+                    {breaks[i] && <div className="text-center text-xs font-semibold text-[#9B9B9B] py-2">{breaks[i]}</div>}
+                    <div className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                     {msg.role === "assistant" && (
                       <div
                         className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0 mr-2 self-end"
@@ -320,6 +339,7 @@ export default function AIAssistantPage() {
                       }`}
                     >
                       {msg.content}
+                    </div>
                     </div>
                   </motion.div>
                 ))}
@@ -394,10 +414,9 @@ export default function AIAssistantPage() {
           </div>
         </div>
       </div>
-
-      {/* New conversation confirmation modal */}
+      {/* Delete conversation confirmation modal */}
       <AnimatePresence>
-        {showClearConfirm && (
+        {showDeleteConfirm && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -409,7 +428,7 @@ export default function AIAssistantPage() {
               backdropFilter: "blur(12px) saturate(150%)",
               WebkitBackdropFilter: "blur(12px) saturate(150%)",
             }}
-            onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}
+            onClick={(e) => { if (e.target === e.currentTarget) closeDelete(); }}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.88, y: 24, filter: "blur(8px)" }}
@@ -428,7 +447,7 @@ export default function AIAssistantPage() {
               }}
             >
               <button
-                onClick={() => setShowClearConfirm(false)}
+                onClick={() => closeDelete()}
                 className="absolute top-4 right-4 text-[#9B9B9B] hover:text-[#1A1A1A] transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -438,14 +457,15 @@ export default function AIAssistantPage() {
                   className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center text-2xl"
                   style={{ background: "rgba(245,200,0,0.1)" }}
                 >
-                  ✨
+                  🗑️
                 </div>
-                <h4 className="font-bold text-lg text-[#1A1A1A] mb-1">Start new conversation?</h4>
-                <p className="text-sm text-[#6B6B6B]">Conversation history will be permanently deleted.</p>
+                <h4 className="font-bold text-lg text-[#1A1A1A] mb-1">Delete this conversation?</h4>
+                <p className="text-sm text-[#6B6B6B]">It will be permanently deleted from your account. This cannot be undone.</p>
+                {deleteError && <p className="text-sm text-[#D32F2F] mt-2">{deleteError}</p>}
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowClearConfirm(false)}
+                  onClick={() => closeDelete()}
                   className="flex-1 py-2.5 text-sm font-semibold rounded-2xl transition-all"
                   style={{
                     background: "rgba(120,120,130,0.12)",
@@ -456,8 +476,8 @@ export default function AIAssistantPage() {
                 >
                   Cancel
                 </button>
-                <GoldButton className="flex-1" onClick={handleClear}>
-                  Clear & Start
+                <GoldButton className="flex-1" onClick={handleDelete}>
+                  Delete
                 </GoldButton>
               </div>
             </motion.div>

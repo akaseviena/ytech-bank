@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Copy, Check, Loader2, Plus, Clock } from "lucide-react";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import PageTransition from "@/components/ui/PageTransition";
 import { createClient } from "@/lib/supabase/client";
 import { useDailyUsage, DAILY_LIMIT } from "@/contexts/DailyUsageContext";
 import type { AgentType } from "@/types";
+import { dayBreaks } from "@/lib/clock";
 
 // `timestamp` is when it was written: it goes to the model as a date mark (lib/clock.ts). Rows saved
 // before messages carried one have none, and are sent unmarked.
@@ -254,6 +255,9 @@ export default function AgentPageShell({
     setTimeout(() => setCopiedIdx(null), 2000);
   }
 
+  // "Clear & Start" DELETES the conversation, and that is the design, not a defect: a specialist has
+  // ONE continuous conversation per person (UNIQUE(user_id, agent_type)), unlike the main assistant,
+  // which has many ("New" there deletes nothing). Do not "fix" this into a second, empty row.
   async function handleClear() {
     if (userIdRef.current) {
       try {
@@ -269,6 +273,9 @@ export default function AgentPageShell({
     setError("");
     setShowClearConfirm(false);
   }
+
+  // a heading above the first message of each London day, like the dates the assistant is told
+  const breaks = dayBreaks(messages);
 
   return (
     <PageTransition>
@@ -382,8 +389,9 @@ export default function AgentPageShell({
           <>
             <div className="space-y-4 mb-4">
               {messages.map((msg, i) => (
+                <Fragment key={i}>
+                {breaks[i] && <div className="text-center text-xs font-semibold text-[#9B9B9B]">{breaks[i]}</div>}
                 <motion.div
-                  key={i}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.22 }}
@@ -433,6 +441,7 @@ export default function AgentPageShell({
                     </div>
                   )}
                 </motion.div>
+                </Fragment>
               ))}
 
               <AnimatePresence>
