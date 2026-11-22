@@ -181,9 +181,10 @@ export async function POST(request: NextRequest) {
 
     // 6. Financial context. Each agent is given the fields the table in lib/context-fields.ts
     // gives it — the lawyer and HR see the balance and nothing more — and the same table is
-    // what the app reads and what the privacy policy lists. No timestamps, UUIDs or live
-    // counters in it, so the bytes stay identical across the turns of one conversation and
-    // the cache hits on turn 2+.
+    // what the app reads and what the privacy policy lists; every agent also gets today's date
+    // and the rule that the date is the server's (lib/clock.ts). No UUIDs, live counters or
+    // time of day in it, so the bytes stay identical across the turns of one conversation (the
+    // date changes once a day) and the cache hits on turn 2+.
     const financialContext = await buildWebContext(supabase, user.id, contextAgent(agentType));
 
     // 7. For accountant financial-report, override userMessage with structured prompt

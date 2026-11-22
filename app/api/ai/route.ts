@@ -90,9 +90,10 @@ export async function POST(request: NextRequest) {
 
   // Per-user session context — volatile relative to STATIC_SYSTEM_PROMPT, so it renders
   // after it. What it holds is decided by the table in lib/context-fields.ts (the same one
-  // the app and the privacy policy read); it has no timestamps, UUIDs or live counters, so
-  // these bytes stay identical across the turns of one conversation and the cache hits on
-  // turn 2+.
+  // the app and the privacy policy read), plus today's date and the rule that the date is the
+  // server's (lib/clock.ts). It has no UUIDs, live counters or time of day, so these bytes stay
+  // identical across the turns of one conversation (the date changes once a day) and the cache
+  // hits on turn 2+.
   const userContext = await buildWebContext(supabase, user.id, "assistant");
 
   // The model gets a window of the saved conversation (lib/history-window.ts, same constants as

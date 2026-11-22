@@ -5,7 +5,7 @@ import { DELETED_PERSON, isNameEcho, personLabel, personName } from "@/lib/perso
 import { appWrittenNote } from "@/lib/transfer-note";
 import { RECENT_TRANSFERS_SHOWN, TRANSFERS_FOR_TOTALS, type ContextField } from "@/lib/context-fields";
 import { RUNWAY_WINDOW_DAYS } from "@/lib/runway";
-import { startOfMonth, subMonths } from "date-fns";
+import { monthStart as londonMonthStart } from "@/lib/clock";
 import { CATEGORY_INFO, type LedgerItem, type LedgerLabel, type LedgerStatus, type TransactionCategory } from "@/types";
 
 // Reads of the double-entry ledger for the web app.
@@ -282,8 +282,10 @@ export async function loadContextRows(
   const needsMonth = (["month_spent", "month_received", "month_business_spent", "month_categories", "month_vs_previous"] as const).some((f) =>
     fields.has(f),
   );
-  const monthStart = startOfMonth(now);
-  const since = fields.has("month_vs_previous") ? startOfMonth(subMonths(now, 1)) : monthStart;
+  // months begin in London (lib/clock.ts), the zone the context tells the model it used: the server's
+  // own zone is UTC, an hour off for half the year
+  const monthStart = londonMonthStart(now);
+  const since = fields.has("month_vs_previous") ? londonMonthStart(now, 1) : monthStart;
   const windowStart = new Date(now.getTime() - RUNWAY_WINDOW_DAYS * 86_400_000);
 
   const [monthAndBefore, lastTransfers, recent, windowSent, first] = await Promise.all([

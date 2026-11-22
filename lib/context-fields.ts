@@ -21,7 +21,14 @@ export const RECENT_TRANSFERS_SHOWN = 20;
 /** Newest transfers added up for the accountant's income / expense totals. */
 export const TRANSFERS_FOR_TOTALS = 50;
 
-/** Each field, in the words the privacy policy uses for it. */
+/**
+ * Each field, in the words the privacy policy uses for it.
+ *
+ * Not in this table, because it is nothing about the person: today's date, the time zone and the
+ * month names (lib/clock.ts). They are in every context, for every agent, and are the same for
+ * everyone. A date printed beside a transfer IS about the person, which is why recent_transfers
+ * names it.
+ */
 export const CONTEXT_FIELD_TEXT = {
   plan: "Your plan, for example Basic or Metal",
   balance: "Your account balance",
@@ -31,7 +38,7 @@ export const CONTEXT_FIELD_TEXT = {
   month_categories: "Your spending this month, by category",
   month_vs_previous: "Money in, money out and the difference, for this month and for last month",
   last_transfers_totals: `Money in, money out and the difference over your ${TRANSFERS_FOR_TOTALS} most recent transfers`,
-  recent_transfers: `Your ${RECENT_TRANSFERS_SHOWN} most recent transfers, one by one: the amount, whether you sent or received it, and its category`,
+  recent_transfers: `Your ${RECENT_TRANSFERS_SHOWN} most recent transfers, one by one: the date, the amount, whether you sent or received it, and its category`,
   runway: "An estimate of how many days your balance would last at the pace of the last 30 days, when there is enough history to give one",
   // the name (and the emoji, which says what a goal is for) is not sent: the model gets the figures only
   goals: "Your savings goals: target, amount saved and deadline",

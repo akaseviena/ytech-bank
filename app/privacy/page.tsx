@@ -22,7 +22,7 @@ export default function PrivacyPage() {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px 80px" }}>
         <p style={{ fontSize: 13, color: "#9B9B9B", marginBottom: 8 }}>
-          Last updated: 18 November 2026
+          Last updated: 22 November 2026
         </p>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: "#1A1A1A", marginBottom: 8, lineHeight: 1.2 }}>
           Privacy Policy — Y-tech prototype
