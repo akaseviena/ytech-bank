@@ -6,6 +6,7 @@ import { getDailyUsage, recordDailyUse, secondsUntilReset } from "@/lib/mobile/d
 import { encodeEvent, sseHeaders } from "@/lib/mobile/sse";
 import { checkAiRateLimit, recordUsage } from "@/lib/mobile/rate-limit";
 import { buildAgentContext, withLiveNote, type MobileAgentId } from "@/lib/mobile/financial-context";
+import { clockProbe } from "@/lib/clock";
 import { AGENT_PROMPTS } from "@/lib/mobile/prompts";
 import { windowHistory, AGENT_HISTORY_WINDOW } from "@/lib/history-window";
 import {
@@ -225,6 +226,7 @@ export async function POST(request: Request) {
 
   // Build scoped context — GDPR data-minimisation per §3
   const agentContext = await buildAgentContext(user.id, agentId);
+  console.log("[mobile/neurooffice]", clockProbe(agentContext.system));
 
   const statusLabels = STATUS_LABELS[agentId];
   const encoder = new TextEncoder();

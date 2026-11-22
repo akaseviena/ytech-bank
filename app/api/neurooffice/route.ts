@@ -6,6 +6,7 @@ import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan } from 
 import { windowHistory, AGENT_HISTORY_WINDOW } from "@/lib/history-window";
 import { DAILY_LIMIT } from "@/lib/daily-limit";
 import { buildWebContext } from "@/lib/web-context";
+import { clockProbe } from "@/lib/clock";
 import { contextAgent } from "@/lib/context-fields";
 
 export const maxDuration = 60;
@@ -186,6 +187,7 @@ export async function POST(request: NextRequest) {
     // time of day in it, so the bytes stay identical across the turns of one conversation (the
     // date changes once a day) and the cache hits on turn 2+.
     const financialContext = await buildWebContext(supabase, user.id, contextAgent(agentType));
+    console.log("[neurooffice]", clockProbe(financialContext));
 
     // 7. For accountant financial-report, override userMessage with structured prompt
     if (agentType === "accountant" && tab === "financial-report") {

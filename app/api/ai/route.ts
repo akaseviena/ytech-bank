@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { windowHistory, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
 import { DAILY_LIMIT } from "@/lib/daily-limit";
 import { buildWebContext } from "@/lib/web-context";
+import { clockProbe } from "@/lib/clock";
 import { commit } from "@/lib/mobile/conversation-store";
 import type { StoredMessage } from "@/lib/mobile/reply-stream";
 
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
   // identical across the turns of one conversation (the date changes once a day) and the cache
   // hits on turn 2+.
   const userContext = await buildWebContext(supabase, user.id, "assistant");
+  console.log("[ai]", clockProbe(userContext));
 
   // The model gets a window of the saved conversation (lib/history-window.ts, same constants as
   // the mobile assistant), read from the database so it includes what the app wrote; the

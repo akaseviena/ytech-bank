@@ -113,6 +113,19 @@ export function monthLabel(now: Date, back = 0): string {
 }
 
 /**
+ * One line for the log of each AI request: the date that is IN THE TEXT being sent to the model
+ * (read back out of it, not recomputed), the server's own clock at that moment, and which commit is
+ * running. They tell three things apart that a screen cannot: the date went out wrong, the date went
+ * out right and the model ignored it ("sent" and "server" agree), or the request ran older code
+ * ("MISSING", or an old commit). Every route logs it right after it has built its context.
+ */
+export function clockProbe(contextText: string, now: Date = new Date()): string {
+  const sent = /^Today's date: (.*)$/m.exec(contextText)?.[1] ?? "MISSING";
+  const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? "local").slice(0, 7);
+  return `clock: sent="${sent}" server=${londonIso(now)} commit=${commit}`;
+}
+
+/**
  * What the model is told about the date, in every context, whichever assistant or agent it is.
  * The same bytes all day, so a cached prompt survives the turns of one conversation.
  *

@@ -6,6 +6,7 @@ import { getDailyUsage, recordDailyUse, secondsUntilReset } from "@/lib/mobile/d
 import { encodeEvent, sseHeaders } from "@/lib/mobile/sse";
 import { checkAiRateLimit, recordUsage } from "@/lib/mobile/rate-limit";
 import { buildAssistantContext, withLiveNote } from "@/lib/mobile/financial-context";
+import { clockProbe } from "@/lib/clock";
 import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/mobile/prompts";
 import { windowHistory, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
 import {
@@ -173,6 +174,7 @@ export async function POST(request: Request) {
 
   // Build financial context (volatile — placed after the cached system prompt)
   const financialContext = await buildAssistantContext(user.id);
+  console.log("[mobile/chat]", clockProbe(financialContext.system));
 
   const encoder = new TextEncoder();
 
