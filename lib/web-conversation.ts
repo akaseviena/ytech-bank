@@ -12,6 +12,13 @@
 // page still switches to the new id and the server creates the row with the first message, as it
 // always has.
 //
+// THE LIST: the person's way back to a conversation they are not in: newest first, each as its date and
+// the first line of its first message. The first message is read on the server side of the query
+// (messages->0->>content), so a list of 30 is a couple of kilobytes, not every message of every thread.
+// The app's conversations are the same rows and are in it, which is the point: two devices, one list.
+// 30 is a known limit, not a loose end: "New" reuses an empty conversation instead of adding another,
+// so the list grows only as fast as people really start conversations.
+//
 // DELETE: a separate act with its own button and its own confirmation, never a side effect of "New".
 // It removes exactly one main-assistant conversation of the person's own, so a mistaken id cannot
 // reach a specialist's thread or anyone else's.
@@ -41,8 +48,81 @@ export async function openLatestConversation(db: SupabaseClient, userId: string)
   return { id: crypto.randomUUID(), messages: [] };
 }
 
-/** "New": an empty conversation, made now. Returns its id. Deletes nothing. */
+export const LIST_LIMIT = 30;
+export const EMPTY_TITLE = "New conversation";
+const TITLE_MAX = 70;
+
+/** The first line of a first message, squashed and cut for a list. Never cuts an emoji in half. */
+export function conversationTitle(first: string | null | undefined): string {
+  const line = String(first ?? "")
+    .split(/\r?\n/)
+    .map((l) => l.replace(/\s+/g, " ").trim())
+    .find((l) => l !== "");
+  if (!line) return EMPTY_TITLE;
+  const chars = Array.from(line);
+  return chars.length > TITLE_MAX ? chars.slice(0, TITLE_MAX).join("").trimEnd() + "…" : line;
+}
+
+export interface ConversationListItem {
+  id: string;
+  /** when its last message was saved (ISO) */
+  updatedAt: string;
+  title: string;
+  /** nothing in it yet */
+  empty: boolean;
+}
+
+/** The newest LIST_LIMIT main conversations of this person, newest first. */
+export async function listConversations(db: SupabaseClient, userId: string): Promise<ConversationListItem[] | null> {
+  const { data, error } = await db
+    .from("ai_conversations")
+    .select("id, updated_at, first:messages->0->>content")
+    .eq("user_id", userId)
+    .is("agent_id", null)
+    .order("updated_at", { ascending: false })
+    .limit(LIST_LIMIT);
+  if (error || !data) return null;
+  return (data as unknown as { id: string; updated_at: string; first: string | null }[]).map((r) => ({
+    id: r.id,
+    updatedAt: r.updated_at,
+    title: conversationTitle(r.first),
+    empty: r.first == null,
+  }));
+}
+
+/** One of this person's main conversations, to show. null when it is not there (deleted on another device). */
+export async function openConversation(db: SupabaseClient, userId: string, id: string): Promise<OpenedConversation | null> {
+  const { data } = await db
+    .from("ai_conversations")
+    .select("id, messages")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .is("agent_id", null)
+    .maybeSingle();
+  if (!data?.id) return null;
+  return { id: data.id as string, messages: Array.isArray(data.messages) ? (data.messages as unknown[]) : [] };
+}
+
+/**
+ * "New": an empty conversation. Returns its id. Deletes nothing. If this person already has an empty one
+ * (made by an earlier "New" and left unused) that one is brought to the top instead of making a second:
+ * otherwise the list would fill with identical "New conversation" rows.
+ */
 export async function startConversation(db: SupabaseClient, userId: string): Promise<string> {
+  try {
+    const unused = (await listConversations(db, userId))?.find((c) => c.empty);
+    if (unused) {
+      const { error } = await db
+        .from("ai_conversations")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", unused.id)
+        .eq("user_id", userId)
+        .is("agent_id", null);
+      if (!error) return unused.id;
+    }
+  } catch {
+    // reusing is a courtesy to the list; a failed look-up must not stop "New": make a fresh one
+  }
   const id = crypto.randomUUID();
   const { error } = await db
     .from("ai_conversations")

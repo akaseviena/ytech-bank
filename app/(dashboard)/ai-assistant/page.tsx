@@ -2,12 +2,19 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Sparkles, Plus, Trash2, X, Clock } from "lucide-react";
+import { Send, Sparkles, Plus, Trash2, X, Clock, History } from "lucide-react";
 import PageTransition from "@/components/ui/PageTransition";
 import GlassCard from "@/components/ui/GlassCard";
 import GoldButton from "@/components/ui/GoldButton";
-import { deleteConversation, openLatestConversation, startConversation } from "@/lib/web-conversation";
-import { dayBreaks } from "@/lib/clock";
+import {
+  deleteConversation,
+  listConversations,
+  openConversation,
+  openLatestConversation,
+  startConversation,
+  type ConversationListItem,
+} from "@/lib/web-conversation";
+import { dayBreaks, dayLabel } from "@/lib/clock";
 import { createClient } from "@/lib/supabase/client";
 import { useDailyUsage, DAILY_LIMIT } from "@/contexts/DailyUsageContext";
 
@@ -118,6 +125,10 @@ export default function AIAssistantPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [showList, setShowList] = useState(false);
+  const [listItems, setListItems] = useState<ConversationListItem[] | null>(null);
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -227,6 +238,42 @@ export default function AIAssistantPage() {
     closeDelete();
   }
 
+  // The way back to a conversation you are not in: the newest 30, each as its date and its first line,
+  // the app's included (the same rows). Read again every time it is opened.
+  async function loadList() {
+    if (!userIdRef.current) return;
+    setListLoading(true);
+    setListError("");
+    const items = await listConversations(supabase.current, userIdRef.current);
+    if (items) setListItems(items);
+    else setListError("Could not load your conversations. Please try again.");
+    setListLoading(false);
+  }
+
+  function openList() {
+    setShowList(true);
+    void loadList();
+  }
+
+  async function pickConversation(id: string) {
+    if (id === convIdRef.current) {
+      setShowList(false);
+      return;
+    }
+    if (!userIdRef.current) return;
+    const opened = await openConversation(supabase.current, userIdRef.current, id);
+    if (!opened) {
+      // deleted on another device since the list was read: say so, and show the list as it is now
+      setListError("That conversation is no longer there.");
+      void loadList();
+      return;
+    }
+    convIdRef.current = opened.id;
+    setMessages(opened.messages as Message[]);
+    setInput("");
+    setShowList(false);
+  }
+
   const inputDisabled = loading || historyLoading || limitReached;
   // a heading above the first message of each London day, like the dates the assistant is told
   const breaks = dayBreaks(messages);
@@ -247,6 +294,21 @@ export default function AIAssistantPage() {
             <p className="text-xs text-[#6B6B6B]">Powered by Claude · Your personal finance advisor</p>
           </div>
           <AnimatePresence>
+            {!historyLoading && (
+              <motion.button
+                key="history"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={openList}
+                disabled={loading}
+                title="Your conversations"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
+              >
+                <History className="w-3.5 h-3.5" />
+                History
+              </motion.button>
+            )}
             {!historyLoading && messages.length > 0 && (
               <motion.button
                 key="delete"
@@ -414,6 +476,68 @@ export default function AIAssistantPage() {
           </div>
         </div>
       </div>
+      {/* Your conversations: date and first line, newest first */}
+      <AnimatePresence>
+        {showList && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{
+              background: "rgba(180,180,200,0.2)",
+              backdropFilter: "blur(12px) saturate(150%)",
+              WebkitBackdropFilter: "blur(12px) saturate(150%)",
+            }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowList(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ duration: 0.22 }}
+              className="relative w-full max-w-md p-5 flex flex-col"
+              style={{
+                maxHeight: "80vh",
+                background: "rgba(255,255,255,0.95)",
+                border: "1px solid rgba(255,255,255,0.95)",
+                boxShadow: "0 32px 64px rgba(0,0,0,0.12)",
+                borderRadius: 24,
+              }}
+            >
+              <button
+                onClick={() => setShowList(false)}
+                className="absolute top-4 right-4 text-[#9B9B9B] hover:text-[#1A1A1A] transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <h4 className="font-bold text-lg text-[#1A1A1A] mb-3 pr-6">Your conversations</h4>
+              {listError && <p className="text-sm text-[#D32F2F] mb-2">{listError}</p>}
+              <div className="overflow-y-auto -mx-1 px-1">
+                {listLoading && !listItems && <p className="text-sm text-[#6B6B6B] py-4 text-center">Loading…</p>}
+                {listItems && listItems.length === 0 && <p className="text-sm text-[#6B6B6B] py-4 text-center">Nothing saved yet.</p>}
+                {listItems?.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => pickConversation(c.id)}
+                    className="w-full text-left px-3 py-2.5 rounded-2xl hover:bg-[rgba(245,200,0,0.08)] transition-colors"
+                    style={c.id === convIdRef.current ? { background: "rgba(245,200,0,0.12)" } : undefined}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-[#9B9B9B]">{dayLabel(c.updatedAt) ?? ""}</span>
+                      {c.id === convIdRef.current && <span className="text-[11px] font-semibold text-[#B8960A]">Current</span>}
+                    </div>
+                    <div className={`text-sm leading-snug ${c.empty ? "text-[#9B9B9B] italic" : "text-[#1A1A1A]"}`}>{c.title}</div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Delete conversation confirmation modal */}
       <AnimatePresence>
         {showDeleteConfirm && (
