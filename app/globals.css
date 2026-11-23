@@ -176,3 +176,20 @@ h1, h2, h3, h4, h5, h6 {
 select.input-field {
   cursor: pointer;
 }
+
+/* ─── Full-height chat screen ────────────────────────── */
+/* 100vh on a phone is the viewport with the browser's address bar tucked away, taller than what is
+   on screen while the bar is showing. A screen sized by it is taller than the window: the window
+   scrolls (the page header slides out of view, the input row sits lower than designed, under the
+   floating feedback button). 100dvh is the viewport as it is now; the 100vh line is the fallback for
+   a browser that does not know dvh. 80px is the mobile bottom navigation, as before. */
+.chat-screen {
+  height: calc(100vh - 80px);
+  height: calc(100dvh - 80px);
+}
+@media (min-width: 1024px) {
+  .chat-screen {
+    height: 100vh;
+    height: 100dvh;
+  }
+}

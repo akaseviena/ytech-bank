@@ -130,15 +130,22 @@ export default function AIAssistantPage() {
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState("");
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrolledOnce = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const supabase = useRef(createClient());
   const userIdRef = useRef("");
   const convIdRef = useRef("");
 
+  // To the end of the conversation, by scrolling the message area ONLY. Scrolling to a marker element at
+  // its end also scrolled the window wherever the page was taller than the screen, and slid the header
+  // out of view (the old call is named in git: "bottomRef"). The first time a conversation is shown it jumps; after that it glides.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, limitReached]);
+    const el = scrollRef.current;
+    if (!el || historyLoading) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: scrolledOnce.current ? "smooth" : "auto" });
+    scrolledOnce.current = true;
+  }, [messages, loading, limitReached, historyLoading]);
 
   // Load persisted conversation on mount
   useEffect(() => {
@@ -280,63 +287,52 @@ export default function AIAssistantPage() {
 
   return (
     <PageTransition>
-      <div className="flex flex-col h-[calc(100vh-80px)] lg:h-screen">
-        {/* Header */}
+      <div className="chat-screen flex flex-col">
+        {/* Header. Row 1: title, History, and room for the fixed usage counter (top right on a phone).
+            Row 2, once there is a conversation: Delete at the left, New at the right. */}
         <div
-          className="px-4 sm:px-6 py-4 flex items-center gap-3"
+          className="px-4 sm:px-6 py-3 sm:py-4"
           style={{ background: "#FFFFFF", borderBottom: "1px solid #F0F0F0" }}
         >
-          <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,200,0,0.3)] flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-lg text-[#1A1A1A] whitespace-nowrap">AI Assistant</h1>
-            <p className="hidden sm:block text-xs text-[#6B6B6B]">Powered by Claude · Your personal finance advisor</p>
-          </div>
-          {/* Two rows on the right. Top: the two ways to move between conversations, History and New.
-              Below, under History: Delete. It destroys something, so it is not set beside the two
-              harmless ones where a thumb finds it as easily. */}
-          <div className="flex flex-col items-start gap-1.5 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <AnimatePresence>
-                {!historyLoading && (
-                  <motion.button
-                    key="history"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    onClick={openList}
-                    disabled={loading}
-                    title="Your conversations"
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
-                  >
-                    <History className="w-3.5 h-3.5" />
-                    History
-                  </motion.button>
-                )}
-                {!historyLoading && messages.length > 0 && !limitReached && (
-                  <motion.button
-                    key="new"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    onClick={handleNew}
-                    disabled={loading}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    New
-                  </motion.button>
-                )}
-              </AnimatePresence>
+          <div className="flex items-center gap-3 pr-20 lg:pr-0">
+            <div className="hidden sm:flex w-10 h-10 rounded-2xl gold-gradient items-center justify-center shadow-[0_2px_8px_rgba(245,200,0,0.3)] flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-bold text-lg text-[#1A1A1A] whitespace-nowrap">AI Assistant</h1>
+              <p className="text-xs text-[#6B6B6B] leading-snug">
+                <span className="sm:hidden">Powered by Claude</span>
+                <span className="hidden sm:inline">Powered by Claude · Your personal finance advisor</span>
+              </p>
             </div>
             <AnimatePresence>
-              {!historyLoading && messages.length > 0 && (
+              {!historyLoading && (
                 <motion.button
-                  key="delete"
+                  key="history"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
+                  onClick={openList}
+                  disabled={loading}
+                  title="Your conversations"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  History
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+          <AnimatePresence>
+            {!historyLoading && messages.length > 0 && (
+              <motion.div
+                key="row2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-between mt-2"
+              >
+                <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={loading}
                   title="Delete this conversation"
@@ -344,14 +340,24 @@ export default function AIAssistantPage() {
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Delete
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </div>
+                </button>
+                {!limitReached && (
+                  <button
+                    onClick={handleNew}
+                    disabled={loading}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    New
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4">
           {historyLoading ? (
             <HistorySkeleton />
           ) : (
@@ -436,7 +442,6 @@ export default function AIAssistantPage() {
 
               {limitReached && <LimitCard resetIn={resetIn} />}
 
-              <div ref={bottomRef} />
             </>
           )}
         </div>
