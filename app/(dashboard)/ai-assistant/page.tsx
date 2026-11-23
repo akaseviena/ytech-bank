@@ -289,7 +289,7 @@ export default function AIAssistantPage() {
     <PageTransition>
       <div className="chat-screen flex flex-col">
         {/* Header. Row 1: title, History, and room for the fixed usage counter (top right on a phone).
-            Row 2, once there is a conversation: Delete at the left, New at the right. */}
+            Row 2, once there is a conversation: Delete and New together at the right edge, New outermost. */}
         <div
           className="px-4 sm:px-6 py-3 sm:py-4"
           style={{ background: "#FFFFFF", borderBottom: "1px solid #F0F0F0" }}
@@ -330,7 +330,7 @@ export default function AIAssistantPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center justify-between mt-2"
+                className="flex items-center justify-end gap-2 mt-2"
               >
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
@@ -461,9 +461,11 @@ export default function AIAssistantPage() {
           </div>
         )}
 
-        {/* Input — pb-20 on mobile clears BottomNav (68px) + FeedbackButton (96–148px from bottom) */}
+        {/* Input. An ordinary distance above the tab bar (main's own padding already clears it). The feedback
+            button is lifted above this row on this page (components/ui/FeedbackButton.tsx): if this row's
+            height changes, that file's offset changes with it. */}
         <div
-          className="px-4 pt-4 pb-20 lg:pb-4"
+          className="px-4 pt-4 pb-3 lg:pb-4"
           style={{
             background: "#FFFFFF",
             borderTop: "1px solid #F0F0F0",

@@ -295,7 +295,10 @@ export default function AgentPageShell({
         <ArrowLeft className="w-4 h-4 text-[#1A1A1A]" />
       </Link>
 
-      <div className="p-6 max-w-3xl mx-auto">
+      {/* pb-20 / lg:pb-24: the follow-up input is the END of this page, not pinned to the screen; with the
+          feedback button fixed at 96–148px from the bottom (76px on a desktop) the end of the page has to
+          stand clear of it, or the button covers the right end of "Send" */}
+      <div className="p-6 pb-20 lg:pb-24 max-w-3xl mx-auto">
 
         {/* Back (desktop) + New conversation */}
         <div className="flex items-center justify-end lg:justify-between mb-6">

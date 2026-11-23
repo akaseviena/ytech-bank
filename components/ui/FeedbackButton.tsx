@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquarePlus, X } from "lucide-react";
 
@@ -71,6 +72,15 @@ export default function FeedbackButton({ userEmail }: FeedbackButtonProps) {
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [hovered, setHovered] = useState(false);
+  // On the assistant the input row is pinned to the bottom of the screen: the button stands ABOVE it, not
+  // beside it (two round targets in the thumb's corner, one under the other). Elsewhere it is where it was.
+  // The row: 16px above + a 46px field + 12px below, on top of the 80px the tab bar's padding keeps clear
+  // = its top is ~157px from the bottom of the screen; the button's bottom is 168px (10.5rem) on a phone.
+  // On a desktop (no tab bar) the row's top is ~78px up; the button's bottom is 96px (bottom-24).
+  // The specialist pages are different: their input is the end of the page, not pinned (see
+  // AgentPageShell), so there is no row to stand above; they keep room at the end of the page instead.
+  const pathname = usePathname();
+  const aboveInput = pathname === "/ai-assistant";
 
   const tallyUrl = `https://tally.so/embed/PdoAZV?${
     userEmail ? `email=${encodeURIComponent(userEmail)}&` : ""
@@ -88,7 +98,7 @@ export default function FeedbackButton({ userEmail }: FeedbackButtonProps) {
         bottom-24 (96px) on mobile keeps the button above the ~72px bottom nav.
         lg:bottom-6 drops it to 24px on desktop where there's no bottom nav.
       */}
-      <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-50">
+      <div className={`fixed right-4 lg:right-6 z-50 ${aboveInput ? "bottom-[168px] lg:bottom-24" : "bottom-24 lg:bottom-6"}`}>
         <div className="relative flex items-center">
           {/* Tooltip — appears to the left of the button */}
           <AnimatePresence>
