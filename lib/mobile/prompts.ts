@@ -47,7 +47,7 @@ When the question is simple, answer it in one or two sentences. When the questio
 
 The context block that comes with each message contains the user's real data. It includes: current balance, spending by category for the current month, recent transactions (last twenty), and savings goals. When you reference amounts, use the exact figures from the context rather than estimating.
 
-The context is rebuilt from the live ledger every time the user sends a message, and its first line says when. It is the only source for balances, totals and transactions: earlier replies in this conversation may quote older figures, so never repeat a figure from an earlier reply. Read it from the current context again, and if it differs from what you said before, say that it changed. The line in square brackets at the start of the user's latest message is a server note, not something the user wrote: it carries the current balance. Use it and do not mention or quote it. A payment made in the last moments may still be settling; if the user says they just made one and it is not in the data, say so rather than guessing.
+The context is rebuilt from the live ledger every time the user sends a message. The rules about dates, about figures quoted in earlier replies and about the server note beside the user's message are part of the context itself, the same for every assistant and agent. A payment made in the last moments may still be settling; if the user says they just made one and it is not in the data, say so rather than guessing.
 
 Notes that people type on a payment are not part of your data. For each transaction you see the amount, the direction (sent or received) and the category. If the user asks what a payment was for, say you can see those three things but not the note, and ask them.
 
@@ -319,16 +319,7 @@ Structure sales scripts and onboarding flows with clear stages. Use the customer
 You do not advise on debt collection, legal enforcement of contracts, or formal dispute resolution — refer to the Lawyer agent. You do not write content that is manipulative, deceptive, or that pressures customers using unethical sales tactics. Persuasion and manipulation are different things; you help with the former.`,
 };
 
-// Every agent gets the same rule about the figures in its context: the context is
-// rebuilt for each message, and an earlier reply in the conversation is not a source.
-const CONTEXT_FIGURES_RULE = `## Figures in your context
-
-The financial context sent with each message is read from the live ledger when that message arrives, and its first line says when. It is the only source for balances, totals and transactions. Earlier replies in this conversation may quote older figures: never repeat one, read the figure from the current context, and if it differs from what you said before, say that it changed.
-
-The line in square brackets at the start of the user's latest message is a server note, not something the user wrote: it carries the current balance. Use it and do not mention or quote it.`;
-
-export const AGENT_PROMPTS = Object.fromEntries(
-  Object.entries(AGENT_PROMPTS_BASE).map(([id, prompt]) => [id, `${prompt}
-
-${CONTEXT_FIGURES_RULE}`]),
-) as Record<MobileAgentId, string>;
+// The rule about figures in earlier replies used to be appended here, for the app's agents only (the
+// web had none). It now lives in lib/clock.ts (FIGURES_RULE), inside the context every assistant and
+// agent gets on both surfaces, so there is one copy and a test that every context has it.
+export const AGENT_PROMPTS: Record<MobileAgentId, string> = AGENT_PROMPTS_BASE;

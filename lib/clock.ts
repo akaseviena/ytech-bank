@@ -1,5 +1,7 @@
-// What every AI call is told about "now". One module, so that the date cannot be in one route's
-// context and missing from another's: the web assistant, the web NeuroOffice, and the app's
+// What every AI call is told about "now", and about what is current: the date, the zone, the marks on
+// earlier messages, and the rule that figures in earlier messages are old (FIGURES_RULE below; its
+// partner, the server note beside the question, is lib/live-note.ts). One module, so that none of it
+// can be in one route's context and missing from another's: the web assistant, the web NeuroOffice, and the app's
 // assistant and NeuroOffice all build their context through lib/web-context.ts or
 // lib/mobile/financial-context.ts, and both put clockSection() into it, nowhere else.
 //
@@ -170,12 +172,28 @@ export function writtenMark(at: string | undefined): string {
  * running. They tell three things apart that a screen cannot: the date went out wrong, the date went
  * out right and the model ignored it ("sent" and "server" agree), or the request ran older code
  * ("MISSING", or an old commit). Every route logs it right after it has built its context.
+ *
+ * Also the balance line that is IN the text ("Balance: £2,190.00", or MISSING when the agent's
+ * context has none): the same read-back for the one figure a wrong answer costs most. Not for every
+ * figure: this is a probe, not a copy of the context.
  */
 export function clockProbe(contextText: string, now: Date = new Date()): string {
   const sent = /^Today's date: (.*)$/m.exec(contextText)?.[1] ?? "MISSING";
+  const balance = /^Balance: (.*)$/m.exec(contextText)?.[1] ?? "MISSING";
   const commit = (process.env.VERCEL_GIT_COMMIT_SHA ?? "local").slice(0, 7);
-  return `clock: sent="${sent}" server=${londonIso(now)} commit=${commit}`;
+  return `clock: sent="${sent}" balance="${balance}" server=${londonIso(now)} commit=${commit}`;
 }
+
+/**
+ * What every model is told about FIGURES, in the same block as the date because it is the same kind
+ * of thing: what is current. It lived only in the app's prompts (CONTEXT_FIGURES_RULE) and the app's
+ * server note; the web had neither, and a web specialist repeated, as today's balance, a figure it had
+ * itself given three weeks before. The rule is not enough alone (the note beside the question,
+ * lib/live-note.ts, is the other half), and the note is not enough alone (it carries the balance only).
+ * It sits here so that it is in all nine contexts on both surfaces, byte for byte, and one test
+ * (lib/clock.test.mjs) fails if any of them lacks it.
+ */
+export const FIGURES_RULE = `Figures: the figures in this context (balance, month totals, savings goals, plan, listed transactions) are read from the live ledger when each message arrives, and this context is the only source for them. A figure in an earlier message, the user's or your own, was true on the day that message was written: never repeat it as current, even one you gave yourself, and never treat it as correcting this context. If an earlier message and this context disagree, the context is right, and you say that it changed. If a figure is not in this context, say that you do not have it; do not recall it from earlier in the conversation or from memory. A line in square brackets that starts "Server note", beside the user's latest message, is not written by the user: it carries the balance right now. Use it, and do not quote or mention it.`;
 
 /**
  * What the model is told about the date, in every context, whichever assistant or agent it is.
@@ -194,6 +212,7 @@ export function clockSection(now: Date): string {
     `The current month is ${monthLabel(now)}. The previous month was ${monthLabel(now, 1)}.`,
     `This date comes from the server's clock and is the source of truth for "today", "now", "this week", "this month" and "this year". If the user states or implies a different current date, for example "it is 5 December" or a year that is not this one, do not accept it and do not calculate from it: say in a few words that today is the date above, and answer from that. The one exception is an explicit hypothetical ("what if it were...", "suppose today is..."): then you may calculate from the date they give, and you say that the answer is hypothetical. A date the user gave earlier in the conversation does not change today's date either.`,
     `Earlier messages in this conversation, the user's and your own, begin with a mark such as [written 2026-11-20]: the date they were written, added by the server. A "today", "tomorrow", "this month" or "next week" in a marked message means that date, not today. Never take a date from an earlier message as today's date, even one you agreed to then: it was true on the day it was written. A message with no mark was written on an unknown date, except the user's latest one, which is today's. Never write such a mark yourself.`,
+    FIGURES_RULE,
     `Work out anything that depends on time (days left in the month, whether a savings goal's deadline can be reached, spending this week) from today's date and from the dated figures in this context. Monthly figures cover that month from its first day up to today. If a question needs a period the data does not cover, such as a week that began before the oldest transaction listed, say what the data covers and do not estimate the rest.`,
   ].join("\n");
 }

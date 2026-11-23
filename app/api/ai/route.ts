@@ -4,7 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import { windowHistory, ASSISTANT_HISTORY_WINDOW } from "@/lib/history-window";
 import { DAILY_LIMIT } from "@/lib/daily-limit";
-import { buildWebContext } from "@/lib/web-context";
+import { buildWebModelContext } from "@/lib/web-context";
+import { webQuestion } from "@/lib/live-note";
 import { clockProbe } from "@/lib/clock";
 import { commit } from "@/lib/mobile/conversation-store";
 import type { StoredMessage } from "@/lib/mobile/reply-stream";
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
   // server's (lib/clock.ts). It has no UUIDs, live counters or time of day, so these bytes stay
   // identical across the turns of one conversation (the date changes once a day) and the cache
   // hits on turn 2+.
-  const userContext = await buildWebContext(supabase, user.id, "assistant");
+  const { system: userContext, live } = await buildWebModelContext(supabase, user.id, "assistant");
   console.log("[ai]", clockProbe(userContext));
 
   // The model gets a window of the saved conversation (lib/history-window.ts, same constants as
@@ -128,7 +129,9 @@ export async function POST(request: NextRequest) {
       ...history,
       {
         role: "user",
-        content: [{ type: "text", text: message, cache_control: { type: "ephemeral" } }],
+        // the question carries the cache breakpoint; the server note (balance right now, lib/live-note.ts)
+        // is a block of its own after it, so the cached history is unchanged from turn to turn
+        content: webQuestion(message, live),
       },
     ],
   });

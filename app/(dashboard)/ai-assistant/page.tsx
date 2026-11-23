@@ -283,62 +283,71 @@ export default function AIAssistantPage() {
       <div className="flex flex-col h-[calc(100vh-80px)] lg:h-screen">
         {/* Header */}
         <div
-          className="px-6 py-4 flex items-center gap-3"
+          className="px-4 sm:px-6 py-4 flex items-center gap-3"
           style={{ background: "#FFFFFF", borderBottom: "1px solid #F0F0F0" }}
         >
           <div className="w-10 h-10 rounded-2xl gold-gradient flex items-center justify-center shadow-[0_2px_8px_rgba(245,200,0,0.3)] flex-shrink-0">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-lg text-[#1A1A1A]">AI Assistant</h1>
-            <p className="text-xs text-[#6B6B6B]">Powered by Claude · Your personal finance advisor</p>
+            <h1 className="font-bold text-lg text-[#1A1A1A] whitespace-nowrap">AI Assistant</h1>
+            <p className="hidden sm:block text-xs text-[#6B6B6B]">Powered by Claude · Your personal finance advisor</p>
           </div>
-          <AnimatePresence>
-            {!historyLoading && (
-              <motion.button
-                key="history"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={openList}
-                disabled={loading}
-                title="Your conversations"
-                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
-              >
-                <History className="w-3.5 h-3.5" />
-                History
-              </motion.button>
-            )}
-            {!historyLoading && messages.length > 0 && (
-              <motion.button
-                key="delete"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={loading}
-                title="Delete this conversation"
-                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#D32F2F] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(211,47,47,0.3)] hover:bg-[rgba(211,47,47,0.04)] flex-shrink-0 disabled:opacity-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
-              </motion.button>
-            )}
-            {!historyLoading && messages.length > 0 && !limitReached && (
-              <motion.button
-                key="new"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={handleNew}
-                disabled={loading}
-                className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                New
-              </motion.button>
-            )}
-          </AnimatePresence>
+          {/* Two rows on the right. Top: the two ways to move between conversations, History and New.
+              Below, under History: Delete. It destroys something, so it is not set beside the two
+              harmless ones where a thumb finds it as easily. */}
+          <div className="flex flex-col items-start gap-1.5 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <AnimatePresence>
+                {!historyLoading && (
+                  <motion.button
+                    key="history"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    onClick={openList}
+                    disabled={loading}
+                    title="Your conversations"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
+                  >
+                    <History className="w-3.5 h-3.5" />
+                    History
+                  </motion.button>
+                )}
+                {!historyLoading && messages.length > 0 && !limitReached && (
+                  <motion.button
+                    key="new"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    onClick={handleNew}
+                    disabled={loading}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#F5C800] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(245,200,0,0.3)] hover:bg-[rgba(245,200,0,0.04)] flex-shrink-0 disabled:opacity-50"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    New
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+            <AnimatePresence>
+              {!historyLoading && messages.length > 0 && (
+                <motion.button
+                  key="delete"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={loading}
+                  title="Delete this conversation"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[#9B9B9B] hover:text-[#D32F2F] transition-colors px-3 py-1.5 rounded-xl border border-[rgba(0,0,0,0.08)] hover:border-[rgba(211,47,47,0.3)] hover:bg-[rgba(211,47,47,0.04)] flex-shrink-0 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Messages */}

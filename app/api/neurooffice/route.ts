@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { AGENT_PLAN_ACCESS, NEUROOFFICE_PLANS, type AgentType, type Plan } from "@/types";
 import { windowHistory, AGENT_HISTORY_WINDOW } from "@/lib/history-window";
 import { DAILY_LIMIT } from "@/lib/daily-limit";
-import { buildWebContext } from "@/lib/web-context";
+import { buildWebModelContext } from "@/lib/web-context";
+import { webQuestion } from "@/lib/live-note";
 import { clockProbe } from "@/lib/clock";
 import { contextAgent } from "@/lib/context-fields";
 
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
     // and the rule that the date is the server's (lib/clock.ts). No UUIDs, live counters or
     // time of day in it, so the bytes stay identical across the turns of one conversation (the
     // date changes once a day) and the cache hits on turn 2+.
-    const financialContext = await buildWebContext(supabase, user.id, contextAgent(agentType));
+    const { system: financialContext, live } = await buildWebModelContext(supabase, user.id, contextAgent(agentType));
     console.log("[neurooffice]", clockProbe(financialContext));
 
     // 7. For accountant financial-report, override userMessage with structured prompt
@@ -229,7 +230,9 @@ export async function POST(request: NextRequest) {
         ...history,
         {
           role: "user",
-          content: [{ type: "text", text: userMessage, cache_control: { type: "ephemeral" } }],
+          // the question carries the cache breakpoint; the server note (balance right now,
+          // lib/live-note.ts) is a block of its own after it
+          content: webQuestion(userMessage, live),
         },
       ],
     });

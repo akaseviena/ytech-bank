@@ -5,6 +5,7 @@ import { loadContextRows, spendByCategory, totals } from "@/lib/ledger";
 import { ledgerPence, numericToPence, penceToPoundsString } from "@/lib/money";
 import { runwayText } from "@/lib/runway";
 import { clockSection, londonDate, londonIso, monthLabel } from "@/lib/clock";
+import { liveNoteFor, type ModelContext } from "@/lib/live-note";
 import {
   CONTEXT_AGENT_LABEL,
   RECENT_TRANSFERS_SHOWN,
@@ -43,19 +44,10 @@ function asOfLine(now: string): string {
   return `As of: ${now} — read from the live ledger for this message`;
 }
 
-/**
- * What the model is given for one message: `system` is the full context for the
- * system prompt; `live` is one line with the current balance, put in front of the
- * person's message in the last turn (withLiveNote). A long conversation in which
- * the model has already quoted a balance pulls it to quote that one again, however
- * the system prompt is worded — the live line sits next to the question and wins.
- * `live` is empty when there is no main account.
- */
-export type ModelContext = { system: string; live: string };
-
-function liveLine(now: string, symbol: string, currency: string, balancePence: number): string {
-  return `[Server note, not written by the user. Right now (${now}): balance ${money(symbol, balancePence)} ${currency}. Any balance quoted earlier in this conversation is out of date.]`;
-}
+// What the model is given for one message: `system` is the full context for the system prompt; `live`
+// is the one-line server note with the current balance, put in front of the person's message in the
+// last turn (withLiveNote). The note and its reason are in lib/live-note.ts, shared with the web.
+export type { ModelContext };
 
 /** The message as the model receives it. The conversation stored in the database keeps the person's own text. */
 export function withLiveNote(live: string, text: string): string {
@@ -186,6 +178,6 @@ async function compose(userId: string, agent: ContextAgent, db: SupabaseClient, 
 
   return {
     system: out.join("\n"),
-    live: account ? liveLine(now, s, currency, account.balanceMinor) : "",
+    live: account ? liveNoteFor(nowDate, account.balanceMinor, currency) : "",
   };
 }

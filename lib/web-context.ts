@@ -4,6 +4,7 @@ import { loadContextRows, spendByCategory, totals, categoryLine } from "@/lib/le
 import { formatPence, ledgerPence, numericToPence } from "@/lib/money";
 import { runwayText } from "@/lib/runway";
 import { clockSection, londonDate, monthLabel } from "@/lib/clock";
+import { liveNoteFor, type ModelContext } from "@/lib/live-note";
 import {
   HISTORY_INCOMPLETE,
   RECENT_TRANSFERS_SHOWN,
@@ -25,12 +26,12 @@ import {
 // present: lib/clock.ts), the figures when money moves.
 
 /** `db` is the signed-in person's own client: row-level security limits every read to their account. */
-export async function buildWebContext(
+export async function buildWebModelContext(
   db: SupabaseClient,
   userId: string,
   agent: ContextAgent,
   now: Date = new Date(),
-): Promise<string> {
+): Promise<ModelContext> {
   const fields = fieldSet(agent);
 
   const [rows, profile, goalsRes] = await Promise.all([
@@ -130,5 +131,14 @@ export async function buildWebContext(
     );
   }
 
-  return out.join("\n");
+  return {
+    system: out.join("\n"),
+    // the same note, from the same function, as the app's (lib/live-note.ts)
+    live: account ? liveNoteFor(now, account.balanceMinor, account.currency) : "",
+  };
+}
+
+/** The context text alone (what the tests that only read the system prompt use). */
+export async function buildWebContext(db: SupabaseClient, userId: string, agent: ContextAgent, now: Date = new Date()): Promise<string> {
+  return (await buildWebModelContext(db, userId, agent, now)).system;
 }
