@@ -104,10 +104,19 @@ export interface ConversationRef {
 
 /**
  * Put `ours` into the conversation: read, apply, write only if nobody wrote since, otherwise
- * read again. "superseded" means a continuation lost its place. Throws when the row stays too
- * busy, or the database fails.
+ * read again. "superseded" means a continuation lost its place. "gone" means the conversation is no
+ * longer there and this write was not allowed to make it (see below): nothing was written. Throws
+ * when the row stays too busy, or the database fails.
+ *
+ * WHO MAY CREATE THE CONVERSATION: only a request's FIRST write, which carries the question and no
+ * reply. Every later write of the same request (the reply as it streams, its end, giving a
+ * continuation back) carries a reply. If the row is missing for one of those, it was deleted, from
+ * another device, while the reply was being written, and writing would make it again holding only
+ * this exchange: the person deleted a conversation and it came back as a fragment. So it writes
+ * nothing; the reply still reaches whoever was waiting for it, it is just not kept. The only place a
+ * row is ever inserted here is the branch below, and it is behind this test.
  */
-export async function commit(db: any, ref: ConversationRef, ours: Ours, now: () => Date = () => new Date()): Promise<"ok" | "superseded"> {
+export async function commit(db: any, ref: ConversationRef, ours: Ours, now: () => Date = () => new Date()): Promise<"ok" | "superseded" | "gone"> {
   for (let attempt = 0; attempt < SAVE_ATTEMPTS; attempt++) {
     const read = await db.from("ai_conversations").select("messages, updated_at").eq("id", ref.id).eq("user_id", ref.userId).maybeSingle();
     if (read.error) throw read.error;
@@ -118,6 +127,7 @@ export async function commit(db: any, ref: ConversationRef, ours: Ours, now: () 
     if (!messages) return "superseded";
 
     if (!row) {
+      if (ours.reply) return "gone";
       const created = await db.from("ai_conversations").insert({
         id: ref.id,
         user_id: ref.userId,

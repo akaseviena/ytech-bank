@@ -32,10 +32,11 @@ export const dynamic = "force-dynamic";
 // cannot be used to find out which ids exist. A second DELETE of the same id is therefore a 404:
 // treat 404 as "it is gone". 400 for an id that is not a UUID, 401 without a signed-in user.
 //
-// ONE THING THE APP MUST NOT DO: offer Delete while a reply to that conversation is still being
-// written. The route that writes the reply saves into the conversation as it goes, and a save into a
-// conversation that is no longer there makes it again, holding only that one exchange. The web turns
-// its Delete button off while a reply is on its way for the same reason.
+// DELETING WHILE A REPLY IS BEING WRITTEN (from this device or another) is safe: the route that writes
+// the reply saves into the conversation as it goes, and a save into a conversation that is no longer
+// there writes nothing (lib/mobile/conversation-store.ts, commit: only a request's first write, the
+// question, may create it). The person waiting still gets the reply; it is just not kept. The web still
+// turns its Delete button off while a reply is on its way, as a courtesy.
 
 const idSchema = z.string().uuid();
 const querySchema = z.object({
