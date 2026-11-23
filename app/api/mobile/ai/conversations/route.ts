@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { requireUser, admin } from "@/lib/mobile/auth";
+import { conversationTitle } from "@/lib/web-conversation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,12 +57,18 @@ export async function GET(request: Request) {
   return Response.json({
     conversations: (data ?? []).map((row) => {
       const messages = Array.isArray(row.messages) ? (row.messages as StoredMessage[]) : [];
+      const first = messages[0];
       const last = messages[messages.length - 1];
       return {
         id: row.id,
         agentId: row.agent_id ?? null,
         updatedAt: row.updated_at,
         messageCount: messages.length,
+        // what to call the conversation in a list: the first line of its FIRST message (at most 70
+        // characters), or "New conversation" when it has none. The same function, on the same text, as
+        // the web's list (lib/web-conversation.ts), so the two cannot name one conversation differently.
+        // `preview` is a different thing and is unchanged: the LAST message's first 120 characters.
+        title: conversationTitle(typeof first?.content === "string" ? first.content : null),
         preview: typeof last?.content === "string" ? last.content.slice(0, 120) : "",
       };
     }),
