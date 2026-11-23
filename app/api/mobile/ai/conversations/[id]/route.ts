@@ -23,6 +23,20 @@ export const dynamic = "force-dynamic";
 // or null once the first message has been returned. Positions only grow as the
 // conversation grows, so a cursor stays valid while new messages arrive.
 
+//   DELETE /api/mobile/ai/conversations/<id>                -> 200 {"ok": true, "conversationId": "<id>"}
+//
+// DELETE removes the conversation, and with it every message in it: the messages are the `messages`
+// column of the same row, there is nowhere else they are kept. It works for a main-assistant
+// conversation and for a NeuroOffice agent's alike (it is by id). Someone else's id, an id that does
+// not exist and an id that was already deleted all answer the same 404 as GET does, so the answer
+// cannot be used to find out which ids exist. A second DELETE of the same id is therefore a 404:
+// treat 404 as "it is gone". 400 for an id that is not a UUID, 401 without a signed-in user.
+//
+// ONE THING THE APP MUST NOT DO: offer Delete while a reply to that conversation is still being
+// written. The route that writes the reply saves into the conversation as it goes, and a save into a
+// conversation that is no longer there makes it again, holding only that one exchange. The web turns
+// its Delete button off while a reply is on its way for the same reason.
+
 const idSchema = z.string().uuid();
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100),
@@ -30,6 +44,37 @@ const querySchema = z.object({
 });
 
 type StoredMessage = { role: "user" | "assistant"; content: string; timestamp: string; truncated?: boolean; continuations?: number };
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  const user = await requireUser(request);
+  if (!user) {
+    return Response.json({ error: "unauthorized", message: "Authentication required." }, { status: 401 });
+  }
+
+  const id = idSchema.safeParse(params.id);
+  if (!id.success) {
+    return Response.json({ error: "invalid_request", message: "Invalid request." }, { status: 400 });
+  }
+
+  // The row is removed by id AND user_id, so what is asked of the database can only ever reach the
+  // signed-in person's own; "select" brings back what was removed, and nothing removed is a 404.
+  const { data, error } = await admin
+    .from("ai_conversations")
+    .delete()
+    .eq("id", id.data)
+    .eq("user_id", user.id)
+    .select("id");
+
+  if (error) {
+    console.error("[mobile/conversations] delete failed:", error);
+    return Response.json({ error: "upstream_error", message: "Could not delete the conversation." }, { status: 500 });
+  }
+  if (!data || data.length === 0) {
+    return Response.json({ error: "not_found", message: "Conversation not found." }, { status: 404 });
+  }
+
+  return Response.json({ ok: true, conversationId: id.data });
+}
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const user = await requireUser(request);
